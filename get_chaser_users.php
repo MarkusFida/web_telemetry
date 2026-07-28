@@ -29,7 +29,10 @@ foreach ($positions as $userId => $position) {
             $ts = $parsed;
         }
     }
-    $usersWithTs[] = ['user_id' => (string)$userId, 'ts' => $ts];
+    $label = isset($position['display_name']) && trim((string)$position['display_name']) !== ''
+        ? trim((string)$position['display_name'])
+        : (string)$userId;
+    $usersWithTs[] = ['user_id' => (string)$userId, 'label' => $label, 'ts' => $ts];
 }
 
 usort($usersWithTs, function($a, $b) {
@@ -37,7 +40,10 @@ usort($usersWithTs, function($a, $b) {
 });
 
 $users = array_map(function($entry) {
-    return $entry['user_id'];
+    return [
+        'user_id' => $entry['user_id'],
+        'label' => $entry['label']
+    ];
 }, $usersWithTs);
 
 echo json_encode([

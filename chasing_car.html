@@ -479,10 +479,15 @@
         autoOption.textContent = 'auto (latest)';
         select.appendChild(autoOption);
 
-        normalizedUsers.forEach(function(userId) {
+        normalizedUsers.forEach(function(entry) {
+          const userId = typeof entry === 'string' ? entry : entry.user_id;
+          const userLabel = typeof entry === 'string' ? entry : (entry.label || entry.user_id);
+          if (!userId) {
+            return;
+          }
           const opt = document.createElement('option');
           opt.value = userId;
-          opt.textContent = userId;
+          opt.textContent = `${userLabel} (${userId})`;
           select.appendChild(opt);
         });
 
@@ -517,10 +522,11 @@
 
             if (Number.isFinite(lat) && Number.isFinite(lng)) {
               const shouldFitOnFirstLoad = !carMarker;
+              const serverName = data.display_name || data.selected_user_id || activeChaserUserId;
               if (data.selected_user_id) {
-                setChaserStatus(`Chaser user: auto -> ${data.selected_user_id} | ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+                setChaserStatus(`Chaser user: auto -> ${serverName} | ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
               } else {
-                setChaserStatus(`Chaser user: ${activeChaserUserId} | ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+                setChaserStatus(`Chaser user: ${serverName} | ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
               }
               setCarPosition(lat, lng, data.timestamp || new Date().toISOString(), shouldFitOnFirstLoad);
               return;

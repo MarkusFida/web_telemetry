@@ -34,6 +34,55 @@ function user_id_from_payload($data) {
     return 'default';
 }
 
+function owntracks_identity_from_payload($data) {
+    $topicUser = null;
+    $topicDevice = null;
+
+    if (isset($data['topic']) && is_string($data['topic'])) {
+        $parts = explode('/', trim($data['topic']));
+        // owntracks/<user>/<device>
+        if (count($parts) >= 3) {
+            $topicUser = trim((string)$parts[1]) !== '' ? trim((string)$parts[1]) : null;
+            $topicDevice = trim((string)$parts[2]) !== '' ? trim((string)$parts[2]) : null;
+        }
+    }
+
+    $configuredUser = null;
+    if (isset($data['username']) && trim((string)$data['username']) !== '') {
+        $configuredUser = trim((string)$data['username']);
+    } elseif (isset($data['user']) && trim((string)$data['user']) !== '') {
+        $configuredUser = trim((string)$data['user']);
+    } elseif (isset($data['userid']) && trim((string)$data['userid']) !== '') {
+        $configuredUser = trim((string)$data['userid']);
+    }
+
+    $displayUser = $configuredUser ?: $topicUser;
+    $displayDevice = null;
+    if (isset($data['device']) && trim((string)$data['device']) !== '') {
+        $displayDevice = trim((string)$data['device']);
+    } elseif (isset($data['tid']) && trim((string)$data['tid']) !== '') {
+        $displayDevice = trim((string)$data['tid']);
+    } elseif ($topicDevice) {
+        $displayDevice = $topicDevice;
+    }
+
+    $displayName = null;
+    if ($displayUser && $displayDevice) {
+        $displayName = $displayUser . '/' . $displayDevice;
+    } elseif ($displayUser) {
+        $displayName = $displayUser;
+    } elseif ($displayDevice) {
+        $displayName = $displayDevice;
+    }
+
+    return [
+        'configured_user' => $configuredUser,
+        'topic_user' => $topicUser,
+        'topic_device' => $topicDevice,
+        'display_name' => $displayName
+    ];
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
     exit;
@@ -97,9 +146,14 @@ if (isset($data['tst']) && is_numeric($data['tst'])) {
 }
 
 $userId = user_id_from_payload($data);
+$identity = owntracks_identity_from_payload($data);
 
 $position = [
     'user_id' => $userId,
+    'display_name' => $identity['display_name'] ?: $userId,
+    'configured_user' => $identity['configured_user'],
+    'topic_user' => $identity['topic_user'],
+    'topic_device' => $identity['topic_device'],
     'lat' => $lat,
     'lng' => $lng,
     'timestamp' => $timestamp,
@@ -134,6 +188,7 @@ if ($saved === false) {
 echo json_encode([
     'message' => 'Position saved successfully',
     'user_id' => $userId,
+    'display_name' => $position['display_name'],
     'lat' => $lat,
     'lng' => $lng,
     'timestamp' => $timestamp
