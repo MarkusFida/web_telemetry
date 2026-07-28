@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ADSB Flight List</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: #111;
+      color: #fff;
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h1 {
+      color: #ffe066;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .controls {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .refresh-control {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .refresh-control label {
+      color: #ffe066;
+      font-weight: bold;
+    }
+    .refresh-control select {
+      padding: 8px;
+      background: #333;
+      color: white;
+      border: 1px solid #555;
+      border-radius: 4px;
+    }
+    .status {
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+    }
+    .status.active {
+      background: #4CAF50;
+      color: white;
+    }
+    .status.inactive {
+      background: #f44336;
+      color: white;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #222;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #444;
+    }
+    th {
+      background: #333;
+      color: #ffe066;
+      font-weight: bold;
+    }
+    tr:hover {
+      background: #333;
+    }
+    .flight-row {
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .flight-row:hover {
+      background: #444;
+    }
+    .altitude, .speed, .track, .lat, .lon {
+      text-align: right;
+    }
+    .country-code {
+      font-weight: bold;
+      color: #ff1744;
+    }
+    .last-update {
+      text-align: center;
+      margin-top: 20px;
+      color: #ccc;
+      font-size: 0.9em;
+    }
+    button {
+      padding: 8px 16px;
+      background: #333;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #555;
+    }
+    .filter-info {
+      background: #333;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>ADSB Flight List (250nm Radius)</h1>
+    
+    <div class="controls">
+      <button id="startBtn">Start ADSB</button>
+      <button id="stopBtn">Stop ADSB</button>
+      <div class="refresh-control">
+        <label for="refreshInterval">Refresh:</label>
+        <select id="refreshInterval">
+          <option value="10000">10 sec</option>
+          <option value="30000">30 sec</option>
+          <option value="60000">1 min</option>
+          <option value="120000" selected>2 min</option>
+          <option value="300000">5 min</option>
+          <option value="600000">10 min</option>
+          <option value="900000">15 min</option>
+          <option value="1200000">20 min</option>
+          <option value="1800000">30 min</option>
+        </select>
+      </div>
+      <div id="status" class="status inactive">Inactive</div>
+      <div id="currentPosition" class="status" style="background: #222; margin-top: 10px; padding: 12px; font-size: 1.1em; font-weight: bold;">
+        📍 ADSB-Zentrum:         📍 ADSB-Zentrum: Position wird geladen...<br>
+        🔍 Suchradius: 250 nm<br>
+        🔍 Suchradius: 250 nm
+      </div>
+    </div>
+
+    <div class="filter-info">
+      <strong>Filter aktiv:</strong> Nur ausgewählte Flugzeuge werden angezeigt
+    </div>
+
+    <table id="flightsTable">
+      <thead>
+        <tr>
+          <th>Callsign</th>
+          <th>Type</th>
+          <th>Registration</th>
+          <th class="altitude">Altitude (ft)</th>
+          <th class="speed">Speed (kt)</th>
+          <th class="track">Track (°)</th>
+          <th class="lat">Latitude</th>
+          <th class="lon">Longitude</th>
+          <th>Country</th>
+        </tr>
+      </thead>
+      <tbody id="flightsBody">
+        <tr>
+          <td colspan="9" style="text-align: center; padding: 40px; color: #666;">
+            Klicken Sie auf "Start ADSB" um die Flugdaten zu laden...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="lastUpdate" class="last-update"></div>
+  </div>
+
+  <script>
+    let adsbInterval = null;
+    let isActive = false;
+    
+    // Konfiguration aus map.html übernommen
+    const adsbFilterList = ['FHMDF', 'DOWBA', 'GGASI', 'DORON', 'ECMAK', '4082BE', 'N526UP', 'N9YN', 'N396WB', 'DOWBI', 'DOSTL', 'DOOGB', 'FPPSE', 'HBQWV', 'DOTLI', 'DOOWE', 'DOABD', 'LYOJU', 'FPPGB', 'DOMFE', 'HBBLA', 'DORZL'];
+    
+    const countryMapping = {
+      'FHMDF': 'FRA 3',
+      'DOWBA': 'POL 2',
+      'GGASI': 'GBR 2',
+      'DORON': 'BEL 1',
+      'ECMAK': 'ESP 1',
+      '4082BE': 'GBR 3',
+      'N526UP': 'USA 1',
+      'N9YN': 'USA 3',
+      'N396WB': 'USA 2',
+      'DOWBI': 'GBR 1',
+      'DOSTL': 'GER 3',
+      'DOOGB': 'GER 2',
+      'FPPSE': 'FRA 2',
+      'HBQWV': 'SUI 2',
+      'DOTLI': 'ITA 1',
+      'DOOWE': 'BEL 3',
+      'DOABD': 'POL 1',
+      'LYOJU': 'LTU 1',
+      'FPPGB': 'FRA 1',
+      'DOMFE': 'GER 1',
+      'HBBLA': 'SUI 1',
+      'DORZL': 'AUT 1'
+    };
+
+    // Zentrum-Koordinaten (werden aus wuzi_data.txt geladen)
+    let centerLat = 48.6664; // Fallback-Koordinaten
+    let centerLon = 7.4602;  // Fallback-Koordinaten
+    const radius = 250; // 250nm Radius (fix eingestellt)
+
+    // Funktion zum Laden der Position aus wuzi_data.txt
+    function loadPositionFromServer() {
+      fetch('wuzi_data.txt')
+        .then(response => response.text())
+        .then(text => {
+          const data = parseWuziData(text);
+          if (data.gps_lat && data.gps_lng && data.gps_lat !== 0 && data.gps_lng !== 0) {
+            centerLat = data.gps_lat;
+            centerLon = data.gps_lng;
+            console.log('Position aus wuzi_data.txt geladen:', centerLat, centerLon);
+            document.getElementById('currentPosition').innerHTML = 
+              `📍 ADSB-Zentrum: ${centerLat.toFixed(5)}, ${centerLon.toFixed(5)}<br>
+               🔍 Suchradius: 250 nm`;
+          } else {
+            console.log('Keine gültige Position in wuzi_data.txt gefunden, verwende Fallback');
+            document.getElementById('currentPosition').innerHTML = 
+              `📍 ADSB-Zentrum: ${centerLat.toFixed(5)}, ${centerLon.toFixed(5)} (Fallback)<br>
+               🔍 Suchradius: 250 nm`;
+          }
+        })
+        .catch(error => {
+          console.log('Fehler beim Laden der Position aus wuzi_data.txt:', error);
+          console.log('Verwende Fallback-Koordinaten');
+          document.getElementById('currentPosition').innerHTML = 
+            `📍 ADSB-Zentrum: ${centerLat.toFixed(5)}, ${centerLon.toFixed(5)} (Fallback)<br>
+             🔍 Suchradius: 250 nm`;
+        });
+    }
+
+    // Funktion zum Parsen der wuzi_data.txt (wie in map.html)
+    function parseWuziData(text) {
+      const lines = text.split('\n');
+      const data = {};
+      lines.forEach(line => {
+        let [key, value] = line.split('=');
+        if (key && value !== undefined) {
+          data[key.trim()] = value.trim();
+        }
+      });
+      data.gps_lat = parseFloat(data.gps_lat || "0");
+      data.gps_lng = parseFloat(data.gps_lng || "0");
+      return data;
+    }
+
+    function fetchADSBData() {
+      if (!isActive) return;
+      
+      fetch(`https://adsbexchange-com1.p.rapidapi.com/v2/lat/${centerLat.toFixed(5)}/lon/${centerLon.toFixed(5)}/dist/${radius}/`, {
+        method: 'GET',
+        headers: {
+          'X-Rapidapi-Key': '1e70a120c1msh5d3ab523f2a21d1p18e559jsn754aeaf2a836',
+          'X-Rapidapi-Host': 'adsbexchange-com1.p.rapidapi.com'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('ADSB API Response:', data.ac ? data.ac.length : 0, 'aircraft received');
+        updateFlightsTable(data);
+        saveADSBDataToDatabase(data);
+        document.getElementById('lastUpdate').textContent = `Letzte Aktualisierung: ${new Date().toLocaleTimeString()}`;
+      })
+      .catch(error => {
+        console.error('ADSB Error:', error);
+        document.getElementById('lastUpdate').textContent = `Fehler: ${error.message}`;
+      });
+    }
+
+    function updateFlightsTable(data) {
+      const tbody = document.getElementById('flightsBody');
+      
+      if (!data.ac || data.ac.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #666;">Keine Flugdaten verfügbar</td></tr>';
+        return;
+      }
+
+      // Daten filtern und sortieren (angepasst für bessere Kompatibilität mit map.html)
+      console.log('Total aircraft received:', data.ac.length);
+      const filteredFlights = data.ac
+        .filter(ac => {
+          // GPS-Koordinaten prüfen
+          if (!ac.lat || !ac.lon) return false;
+          
+          const callsign = (ac.flight || '').toUpperCase();
+          const reg = (ac.r || '').toUpperCase();
+          
+          // Filter prüfen (exakt wie in map.html)
+          if (
+            adsbFilterList.length > 0 &&
+            !adsbFilterList.some(filter => callsign.includes(filter) || reg.includes(filter))
+          ) {
+            return false;
+          }
+          
+          return true;
+        })
+        .sort((a, b) => (b.alt_baro || 0) - (a.alt_baro || 0)); // Nach Höhe absteigend sortieren
+
+      console.log('Filtered aircraft count:', filteredFlights.length);
+      tbody.innerHTML = '';
+
+      filteredFlights.forEach(ac => {
+        // Ländercodes aus Zuordnung holen
+        let countryCode = '';
+        const callsign = (ac.flight || '').toUpperCase();
+        const reg = (ac.r || '').toUpperCase();
+        
+        for (const key in countryMapping) {
+          if (callsign === key || reg === key || 
+              callsign.includes(key) || reg.includes(key)) {
+            countryCode = countryMapping[key];
+            break;
+          }
+        }
+
+        const row = document.createElement('tr');
+        row.className = 'flight-row';
+        row.innerHTML = `
+          <td>${ac.flight || ''}</td>
+          <td>${ac.type || ''}</td>
+          <td>${ac.r || ''}</td>
+          <td class="altitude">${ac.alt_baro || ''}</td>
+          <td class="speed">${ac.gs || ''}</td>
+          <td class="track">${ac.track || ''}</td>
+          <td class="lat">${ac.lat ? ac.lat.toFixed(4) : ''}</td>
+          <td class="lon">${ac.lon ? ac.lon.toFixed(4) : ''}</td>
+          <td class="country-code">${countryCode}</td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      if (filteredFlights.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #666;">Keine gefilterten Flugdaten gefunden</td></tr>';
+      }
+    }
+
+    function saveADSBDataToDatabase(data) {
+      if (!data.ac || data.ac.length === 0) return;
+
+      // Daten filtern (gleiche Filter wie in updateFlightsTable)
+      const filteredFlights = data.ac
+        .filter(ac => {
+          // GPS-Koordinaten prüfen
+          if (!ac.lat || !ac.lon) return false;
+          
+          const callsign = (ac.flight || '').toUpperCase();
+          const reg = (ac.r || '').toUpperCase();
+          
+          // Filter prüfen (exakt wie in map.html)
+          if (
+            adsbFilterList.length > 0 &&
+            !adsbFilterList.some(filter => callsign.includes(filter) || reg.includes(filter))
+          ) {
+            return false;
+          }
+          
+          return true;
+        });
+
+      if (filteredFlights.length === 0) return;
+
+      // Daten für die Datenbank vorbereiten
+      const flightsData = filteredFlights.map(ac => {
+        // Ländercodes aus Zuordnung holen
+        let countryCode = '';
+        const callsign = (ac.flight || '').toUpperCase();
+        const reg = (ac.r || '').toUpperCase();
+        
+        for (const key in countryMapping) {
+          if (callsign === key || reg === key || 
+              callsign.includes(key) || reg.includes(key)) {
+            countryCode = countryMapping[key];
+            break;
+          }
+        }
+
+        return {
+          callsign: ac.flight || '',
+          registration: ac.r || '',
+          altitude: ac.alt_baro || null,
+          speed: ac.gs || null,
+          track: ac.track || null,
+          lat: ac.lat,
+          lon: ac.lon,
+          country_code: countryCode
+        };
+      });
+
+      // Daten an PHP-Script senden
+      fetch('save_adsb_data.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ flights: flightsData })
+      })
+      .then(response => response.json())
+      .then(result => {
+        if (result.error) {
+          console.error('Database save error:', result.error);
+        } else {
+          console.log('ADSB data saved:', result.inserted, 'flights at', result.timestamp);
+        }
+      })
+      .catch(error => {
+        console.error('Database save failed:', error);
+      });
+    }
+
+    function startADSB() {
+      if (isActive) return;
+      isActive = true;
+      document.getElementById('status').textContent = 'Active - Loading...';
+      document.getElementById('status').className = 'status active';
+      
+      // Sofort laden
+      fetchADSBData();
+      
+      // Intervall aus Dropdown-Liste holen
+      const interval = parseInt(document.getElementById('refreshInterval').value);
+      adsbInterval = setInterval(fetchADSBData, interval);
+    }
+
+    function stopADSB() {
+      isActive = false;
+      if (adsbInterval) {
+        clearInterval(adsbInterval);
+        adsbInterval = null;
+      }
+      document.getElementById('status').textContent = 'Inactive';
+      document.getElementById('status').className = 'status inactive';
+      document.getElementById('lastUpdate').textContent = '';
+    }
+
+    function updateRefreshInterval() {
+      if (!isActive) return; // Nur aktualisieren wenn aktiv
+      
+      // Altes Intervall stoppen
+      if (adsbInterval) {
+        clearInterval(adsbInterval);
+        adsbInterval = null;
+      }
+      
+      // Neues Intervall aus Dropdown holen und starten
+      const interval = parseInt(document.getElementById('refreshInterval').value);
+      adsbInterval = setInterval(fetchADSBData, interval);
+      
+      console.log('Refresh interval updated to:', interval, 'ms');
+    }
+
+    // Event-Listener
+    document.getElementById('startBtn').addEventListener('click', startADSB);
+    document.getElementById('stopBtn').addEventListener('click', stopADSB);
+    document.getElementById('refreshInterval').addEventListener('change', updateRefreshInterval);
+
+    // Initial status
+    document.getElementById('status').textContent = 'Inactive';
+
+    // Position beim Laden der Seite laden und regelmäßig aktualisieren (wie in map.html alle 2 Sekunden)
+    loadPositionFromServer();
+    setInterval(loadPositionFromServer, 2000); // Alle 2 Sekunden aktualisieren (wie map.html)
+  </script>
+</body>
+</html>

@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>OpenSky Network Traffic & Eigene GPS-Position</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { margin:0; padding:0; background:#181818; color:#ffe066; font-family:Arial,sans-serif; }
+    #mainwrap { display: flex; flex-direction: row; }
+    #balloonTableWrap {
+      width: 340px;
+      min-width: 220px;
+      max-width: 400px;
+      background: #232323;
+      padding: 12px 8px 8px 8px;
+      border-right: 2px solid #333;
+      overflow-y: auto;
+      height: 94vh;
+    }
+    #balloonTable {
+      width: 100%;
+      border-collapse: collapse;
+      background: #232323;
+      color: #ffe066;
+      font-size: 1em;
+    }
+    #balloonTable th, #balloonTable td {
+      border: 1px solid #444;
+      padding: 6px 8px;
+      text-align: center;
+    }
+    #balloonTable th {
+      background: #333;
+      color: #ffe066;
+      font-size: 1.1em;
+    }
+    #balloonTable tr:nth-child(even) { background: #282828; }
+    #map { width: 100vw; height: 92vh; flex: 1 1 0; }
+    h1 { text-align:center; color:#ffe066; margin:18px 0 8px 0; }
+    #info { text-align:center; margin-bottom:10px; }
+    #controls { text-align:center; margin-bottom:10px; }
+    #radiusSelect, #typeSelect { font-size:1.1em; padding:4px 10px; border-radius:6px; border:1px solid #ffe066; background:#222; color:#ffe066; margin-left:8px;}
+    .leaflet-tooltip.icao-label {
+      background: #222;
+      color: #ffe066;
+      border: 1px solid #ffe066;
+      font-size: 1em;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: bold;
+      box-shadow: 0 2px 8px #0008;
+    }
+    @media (max-width: 900px) {
+      #mainwrap { flex-direction: column; }
+      #balloonTableWrap { width: 100vw; max-width: 100vw; border-right: none; border-bottom: 2px solid #333; height: auto; }
+      #map { height: 60vh; }
+    }
+  </style>
+</head>
+<body>
+  <div style="margin:18px 0 0 30px;">
+    <a href="live.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">Live data</a>
+    <a href="chart_1.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">chart</a>
+    <a href="alt_wind_chart.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">Alt/Wind data</a>
+    <a href="ballast_drop.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">Ballast Drop Times</a>
+    <a href="traffic.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">Traffic</a>
+    <a href="map.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">map</a>
+  </div>
+  <h1>OpenSky Network Traffic & Eigene GPS-Position</h1>
+  <div id="controls">
+    Radius:
+    <select id="radiusSelect">
+      <option value="25">25 km</option>
+      <option value="50">50 km</option>
+      <option value="75">75 km</option>
+      <option value="100" selected>100 km</option>
+      <option value="150">150 km</option>
+      <option value="200">200 km</option>
+    </select>
+    Show:
+    <select id="typeSelect">
+      <option value="all" selected>All</option>
+      <option value="balloon">Only Balloons</option>
+    </select>
+  </div>
+  <div id="info">Loading traffic data...</div>
+  <div id="mainwrap">
+    <div id="balloonTableWrap">
+      <table id="balloonTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Tail</th>
+            <th>ICAO24</th>
+            <th>Altitude<br>(ft)</th>
+            <th>Speed<br>(kts)</th>
+            <th>Dist<br>(mi)</th>
+            <th>Track<br>(°)</th>
+          </tr>
+        </thead>
+        <tbody id="balloonTableBody">
+          <tr><td colspan="7" style="color:#888;">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="map"></div>
+  </div>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    let HOME_LAT = 48.789007;
+    let HOME_LON = 14.99307;
+    let map, homeMarker, trafficLayer, radiusCircle;
+    let RADIUS_KM = 100;
+    let SHOW_TYPE = "all";
+    let selectedMarker = null;
+    let routePolyline = null;
+    let aircraftRoutes = {};
+    let lastBalloons = [];
+    let gpsMarker = null;
+
+    const BALLOON_PREFIXES = [
+      "3E7", "3E8", "3E9", "3EA", "3EB", "3EC", "3ED", "3EE", "3EF",
+      "3F7", "3F8", "3F9", "3FA", "3FB", "3FC", "3FD", "3FE", "3FF",
+      "896", "4A8", "4B1", "A6F", "A7D", "A8A", "A9A", "484", "495",
+      "C06", "C07", "C08", "C09"
+    ];
+
+    function isBalloon(icao24, callsign) {
+      if (!icao24) return false;
+      const prefix = icao24.substring(0, 3).toUpperCase();
+      if (BALLOON_PREFIXES.includes(prefix)) return true;
+      if (callsign && callsign.toUpperCase().includes("BALL")) return true;
+      return false;
+    }
+
+    function balloonIcon() {
+      return L.divIcon({
+        className: '',
+        html: `<svg width="32" height="32" viewBox="0 0 32 32">
+          <ellipse cx="16" cy="15" rx="12" ry="14" fill="#ff4081" stroke="#fff" stroke-width="3"/>
+          <rect x="14" y="27" width="4" height="5" rx="2" fill="#fff"/>
+          <line x1="16" y1="30" x2="16" y2="32" stroke="#fff" stroke-width="2"/>
+        </svg>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+    }
+
+    function planeIcon() {
+      return L.divIcon({
+        className: '',
+        html: `<svg width="22" height="22" viewBox="0 0 22 22">
+          <circle cx="11" cy="11" r="8" fill="#00d8ff" stroke="#fff" stroke-width="3"/>
+        </svg>`,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+      });
+    }
+
+    function ownGpsIcon() {
+      return L.divIcon({
+        className: '',
+        html: `<svg width="28" height="28" viewBox="0 0 28 28">
+          <circle cx="14" cy="14" r="10" fill="#ffe066" stroke="#fff" stroke-width="3"/>
+        </svg>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      });
+    }
+
+    function getTailNumber(st) {
+      let callsign = st[1] ? st[1].trim() : "";
+      if (callsign && /^[A-Z0-9\-]+$/.test(callsign) && callsign.length >= 4) {
+        return callsign;
+      }
+      return st[0] ? st[0].toUpperCase() : "N/A";
+    }
+
+    function mToFt(m) {
+      return Math.round(m * 3.28084);
+    }
+
+    function msToKts(ms) {
+      return Math.round(ms * 1.94384);
+    }
+
+    function kmToMi(km) {
+      return km * 0.621371;
+    }
+
+    function updateBalloonTable(balloons) {
+      const tbody = document.getElementById('balloonTableBody');
+      tbody.innerHTML = '';
+      if (!balloons.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="color:#888;">No balloons found</td></tr>';
+        return;
+      }
+      balloons.forEach((b, idx) => {
+        tbody.innerHTML += `<tr>
+          <td>${idx + 1}</td>
+          <td>${b.tail}</td>
+          <td>${b.icao24}</td>
+          <td>${b.alt_ft}</td>
+          <td>${b.vel_kts}</td>
+          <td>${b.dist_mi}</td>
+          <td>${b.track}</td>
+        </tr>`;
+      });
+    }
+
+    function initMap() {
+      map = L.map('map').setView([HOME_LAT, HOME_LON], 9);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 16,
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      homeMarker = L.marker([HOME_LAT, HOME_LON], {title: "Home"}).addTo(map)
+        .bindPopup("Home Position").openPopup();
+
+      radiusCircle = L.circle([HOME_LAT, HOME_LON], {
+        color: '#ffe066',
+        fillColor: '#ffe06622',
+        fillOpacity: 0.2,
+        radius: RADIUS_KM * 1000
+      }).addTo(map);
+    }
+
+    function updateHomeMarkerAndCircle() {
+      if (homeMarker) {
+        homeMarker.setLatLng([HOME_LAT, HOME_LON]);
+      }
+      if (radiusCircle) {
+        radiusCircle.setLatLng([HOME_LAT, HOME_LON]);
+        radiusCircle.setRadius(RADIUS_KM * 1000);
+      }
+      if (map) {
+        map.setView([HOME_LAT, HOME_LON]);
+      }
+    }
+
+    function updateRadiusCircle() {
+      if (radiusCircle) {
+        radiusCircle.setRadius(RADIUS_KM * 1000);
+      }
+    }
+
+    function haversine(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2-lat1) * Math.PI/180;
+      const dLon = (lon2-lon1) * Math.PI/180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    function isValidGPS(lat, lon) {
+      return (
+        typeof lat === "number" && typeof lon === "number" &&
+        !isNaN(lat) && !isNaN(lon) &&
+        Math.abs(lat) > 0.1 && Math.abs(lon) > 0.1 &&
+        lat > -90 && lat < 90 && lon > -180 && lon < 180
+      );
+    }
+
+    function fetchTraffic() {
+      document.getElementById('info').textContent = "Loading traffic data...";
+      const dLat = RADIUS_KM / 111.12;
+      const dLon = RADIUS_KM / (111.32 * Math.cos(HOME_LAT * Math.PI/180));
+      const minLat = HOME_LAT - dLat;
+      const maxLat = HOME_LAT + dLat;
+      const minLon = HOME_LON - dLon;
+      const maxLon = HOME_LON + dLon;
+
+      const url = `https://opensky-network.org/api/states/all?lamin=${minLat}&lomin=${minLon}&lamax=${maxLat}&lomax=${maxLon}`;
+
+      fetch(url)
+        .then(r => r.json())
+        .then(data => {
+          if (trafficLayer) {
+            trafficLayer.clearLayers();
+          } else {
+            trafficLayer = L.layerGroup().addTo(map);
+          }
+          let count = 0;
+          let newRoutes = {};
+          let balloons = [];
+          if (data.states && Array.isArray(data.states)) {
+            data.states.forEach(st => {
+              const lat = st[6], lon = st[5];
+              if (lat && lon) {
+                const dist_km = haversine(HOME_LAT, HOME_LON, lat, lon);
+                const dist_mi = kmToMi(dist_km);
+                if (dist_km <= RADIUS_KM) {
+                  const callsign = st[1] ? st[1].trim() : "";
+                  const icao24 = st[0] ? st[0].toUpperCase() : "N/A";
+                  const tail = getTailNumber(st);
+                  const alt_ft = st[7] ? mToFt(st[7]) : "n/a";
+                  const vel_kts = st[9] ? msToKts(st[9]) : "n/a";
+                  const hdg = st[10] ? Math.round(st[10]) + "°" : "n/a";
+                  const isBall = isBalloon(icao24, callsign);
+                  const track = st[10] !== null && st[10] !== undefined ? Math.round(st[10]) : "";
+
+                  if (SHOW_TYPE === "balloon" && !isBall) return;
+
+                  if (!newRoutes[icao24]) newRoutes[icao24] = [];
+                  newRoutes[icao24].push([lat, lon]);
+
+                  count++;
+                  const popup = `<b>Tail number:</b> ${tail}<br>
+                                 <b>ICAO24:</b> ${icao24}<br>
+                                 <b>Type:</b> ${isBall ? "🎈 Balloon" : "✈ Aircraft"}<br>
+                                 <b>Altitude:</b> ${alt_ft} ft<br>
+                                 <b>Speed:</b> ${vel_kts} kts<br>
+                                 <b>Heading:</b> ${hdg}<br>
+                                 <b>Distance:</b> ${dist_mi.toFixed(1)} mi`;
+
+                  const marker = L.marker([lat, lon], {
+                    icon: isBall ? balloonIcon() : planeIcon()
+                  }).addTo(trafficLayer).bindPopup(popup);
+
+                  marker.bindTooltip(
+                    `${tail}`,
+                    {permanent: true, direction: 'top', className: 'icao-label', offset: [0, -18]}
+                  );
+
+                  marker.on('click', function() {
+                    if (routePolyline) {
+                      map.removeLayer(routePolyline);
+                      routePolyline = null;
+                    }
+                    if (aircraftRoutes[icao24] && aircraftRoutes[icao24].length > 1) {
+                      routePolyline = L.polyline(aircraftRoutes[icao24], {color: isBall ? "#ff4081" : "#00d8ff", weight: 4, opacity: 0.7}).addTo(map);
+
+                      let totalMi = 0;
+                      for (let i = 1; i < aircraftRoutes[icao24].length; i++) {
+                        const [lat1, lon1] = aircraftRoutes[icao24][i - 1];
+                        const [lat2, lon2] = aircraftRoutes[icao24][i];
+                        const dKm = haversine(lat1, lon1, lat2, lon2);
+                        totalMi += kmToMi(dKm);
+                      }
+
+                      marker.getPopup().setContent(
+                        popup +
+                        `<br><b>Route length:</b> ${totalMi.toFixed(1)} mi`
+                      );
+                      marker.openPopup();
+                    }
+                  });
+
+                  if (isBall) {
+                    balloons.push({
+                      tail: tail,
+                      icao24: icao24,
+                      alt_ft: alt_ft !== "n/a" ? alt_ft : "",
+                      vel_kts: vel_kts !== "n/a" ? vel_kts : "",
+                      dist_mi: dist_mi.toFixed(1),
+                      track: track !== "" ? track + "°" : ""
+                    });
+                  }
+                }
+              }
+            });
+          }
+          Object.keys(newRoutes).forEach(icao24 => {
+            if (!aircraftRoutes[icao24]) aircraftRoutes[icao24] = [];
+            aircraftRoutes[icao24] = aircraftRoutes[icao24].concat(newRoutes[icao24]);
+            if (aircraftRoutes[icao24].length > 30) {
+              aircraftRoutes[icao24] = aircraftRoutes[icao24].slice(-30);
+            }
+          });
+          Object.keys(aircraftRoutes).forEach(icao24 => {
+            if (aircraftRoutes[icao24].length > 1) {
+              const isBall = BALLOON_PREFIXES.includes(icao24.substring(0, 3).toUpperCase());
+              L.polyline(aircraftRoutes[icao24], {
+                color: isBall ? "#ff4081" : "#00d8ff",
+                weight: isBall ? 3 : 2,
+                opacity: isBall ? 0.7 : 0.4,
+                dashArray: isBall ? null : "6,8"
+              }).addTo(trafficLayer);
+            }
+          });
+          document.getElementById('info').textContent = `${count} aircraft within ${RADIUS_KM}km`;
+          updateBalloonTable(balloons);
+        })
+        .catch(err => {
+          document.getElementById('info').textContent = "Error loading OpenSky data.";
+          document.getElementById('balloonTableBody').innerHTML = '<tr><td colspan="7" style="color:#888;">Error loading data</td></tr>';
+          console.error(err);
+        });
+    }
+
+    // Eigene GPS-Position dynamisch aus gps_live.php holen
+    function fetchOwnGPS() {
+      fetch('gps_live.php')
+        .then(r => r.json())
+        .then(data => {
+          const lat = parseFloat(data.gps_lat);
+          const lon = parseFloat(data.gps_lng);
+          const gps_time = data.gps_time || "";
+          if (
+            typeof lat === "number" && typeof lon === "number" &&
+            !isNaN(lat) && !isNaN(lon) &&
+            Math.abs(lat) > 0.1 && Math.abs(lon) > 0.1 &&
+            lat > -90 && lat < 90 && lon > -180 && lon < 180
+          ) {
+            HOME_LAT = lat;
+            HOME_LON = lon;
+            updateHomeMarkerAndCircle();
+            fetchTraffic();
+
+            if (!gpsMarker) {
+              gpsMarker = L.marker([lat, lon], {
+                icon: ownGpsIcon()
+              }).addTo(map).bindPopup(
+                "Eigene GPS-Position<br>" +
+                "Lat: <b>" + lat + "</b><br>" +
+                "Long: <b>" + lon + "</b><br>" +
+                (gps_time ? "Zeit: " + gps_time : "")
+              );
+            } else {
+              gpsMarker.setLatLng([lat, lon]);
+              gpsMarker.setPopupContent(
+                "Eigene GPS-Position<br>" +
+                "Lat: <b>" + lat + "</b><br>" +
+                "Long: <b>" + lon + "</b><br>" +
+                (gps_time ? "Zeit: " + gps_time : "")
+              );
+            }
+          }
+        })
+        .catch(() => {});
+    }
+
+    document.getElementById('radiusSelect').addEventListener('change', function() {
+      RADIUS_KM = parseInt(this.value, 10);
+      updateRadiusCircle();
+      fetchTraffic();
+    });
+
+    document.getElementById('typeSelect').addEventListener('change', function() {
+      SHOW_TYPE = this.value;
+      fetchTraffic();
+    });
+
+    function loadGPSfromTXT(callback) {
+      fetch('wuzi_data.txt')
+        .then(r => r.text())
+        .then(txt => {
+          let lat = null, lon = null;
+          txt.split('\n').forEach(line => {
+            if (line.includes('gps_lat')) {
+              const m = line.match(/gps_lat\s*=\s*([0-9\.\-]+)/);
+              if (m) lat = parseFloat(m[1]);
+            }
+            if (line.includes('gps_lng')) {
+              const m = line.match(/gps_lng\s*=\s*([0-9\.\-]+)/);
+              if (m) lon = parseFloat(m[1]);
+            }
+          });
+          if (lat !== null && lon !== null && !isNaN(lat) && !isNaN(lon)) {
+            HOME_LAT = lat;
+            HOME_LON = lon;
+          }
+          if (typeof callback === "function") callback();
+        })
+        .catch(() => {
+          if (typeof callback === "function") callback();
+        });
+    }
+
+    // Start: load GPS, then init map and fetch traffic
+    loadGPSfromTXT(() => {
+      initMap();
+      fetchOwnGPS();
+      setInterval(fetchOwnGPS, 10000); // Eigene GPS-Position und Traffic alle 10s aktualisieren
+    });
+  </script>
+</body>
+</html>

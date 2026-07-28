@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ballast Drop Times (last 24h)</title>
+  <style>
+    body { background: #181818; color: #ffe066; font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    h1 { color: #ffe066; text-align: center; margin-top: 30px; }
+    table { margin: 30px auto; border-collapse: collapse; background: #222; }
+    th, td { padding: 10px 24px; border: 1px solid #444; font-size: 1.2em; }
+    th { background: #333; color: #ffe066; }
+    td { color: #fff; text-align: center; }
+    tr:nth-child(even) { background: #292929; }
+    .no-data { text-align: center; color: #888; margin-top: 40px; }
+  </style>
+</head>
+<body>
+  <div style="margin:18px 0 0 30px;">
+    <a href="live.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">Live data</a>
+    <a href="chart_1.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">chart</a>
+    <a href="alt_wind_chart.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">Alt/Wind data</a>
+    <a href="ballast_drop.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">Ballast Drop Times</a>
+    <a href="map.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">map</a>
+    <a href="csv.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">csv chart</a>
+  </div>
+  <h1>Ballast Drop Times (last 24h)</h1>
+  <table id="dropTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Date</th>
+        <th>Time (UTC)</th>
+        <th>Altitude (ft)</th>
+        <th>Sand Count</th>
+        <th>Bags left</th>
+        <th>+Sand</th>
+        <th>-Bags</th>
+      </tr>
+    </thead>
+    <tbody id="dropBody">
+      <tr><td colspan="8" class="no-data">Loading data...</td></tr>
+    </tbody>
+  </table>
+  <script>
+    function loadBallastDrop() {
+      fetch('ballast_drop.php')
+        .then(r => r.json())
+        .then(data => {
+          const body = document.getElementById('dropBody');
+          body.innerHTML = '';
+          if (!data.length) {
+            body.innerHTML = '<tr><td colspan="8" class="no-data">No ballast drop events in the last 24h.</td></tr>';
+            return;
+          }
+          data.forEach((row, i) => {
+            let date = '', time = '';
+            if (row.created_at) {
+              const dt = row.created_at.split(/[ T]/);
+              if (dt.length >= 2) {
+                date = dt[0];
+                time = dt[1].substring(0, 8);
+              }
+            }
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${i + 1}</td><td>${date}</td><td>${time}</td><td>${row.alt_ft ?? ''}</td><td>${row.sand_count ?? ''}</td><td>${row.bag_count ?? ''}</td><td>${row.delta_sand > 0 ? '+'+row.delta_sand : ''}</td><td>${row.delta_bag > 0 ? '-'+row.delta_bag : ''}</td>`;
+            body.appendChild(tr);
+          });
+        })
+        .catch((err) => {
+          document.getElementById('dropBody').innerHTML = '<tr><td colspan="8" class="no-data">Error loading data.</td></tr>';
+          console.error(err);
+        });
+    }
+    loadBallastDrop();
+    setInterval(loadBallastDrop, 60000);
+  </script>
+</body>
+</html>

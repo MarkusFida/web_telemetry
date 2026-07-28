@@ -1,0 +1,1976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Wuzi Vario Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <script src="https://unpkg.com/togeojson"></script>
+  <script src="https://unpkg.com/leaflet-filelayer@1.2.0/leaflet.filelayer.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-filelayer@1.2.0/leaflet.filelayer.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: #111;
+      color: #fff;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #map {
+      width: 100vw;
+      height: 100vh;
+      min-height: 100vh;
+      min-width: 100vw;
+      border: none;
+      margin: 0;
+      padding: 0;
+      background: #181818;
+      display: block;
+      position: relative;
+    }
+    #compass-container {
+      position: absolute;
+      top: 18px;
+      left: 30%; /* Geändert von 50% zu 40%, um weiter nach links zu schieben */
+      transform: translateX(-50%);
+      z-index: 500;
+      pointer-events: none;
+      user-select: none;
+    }
+    #compass-rose {
+      position: relative;
+      width: 170px;
+      height: 170px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    #compass-info {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-10%);
+      font-size: 1.2em;
+      color: #ffe066;
+      background: rgba(24,24,24,0.85);
+      border-radius: 8px;
+      padding: 2px 24px 2px 24px;
+      margin-top: -12px;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+    #compass-arrow {
+      position: absolute;
+      top: 35px;
+      left: 50%;
+      transform: translateX(-50%) rotate(0deg);
+      font-size: 7em;
+      color: #ff00cc;
+      font-weight: bold;
+      text-shadow: 0 0 18px #222, 0 0 8px #ff00cc;
+      line-height: 1;
+      pointer-events: none;
+      user-select: none;
+      text-align: center;
+      width: 100%;
+    }
+    #compass-degree {
+      position: absolute;
+      top: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 2em;
+      color: #ffe066;
+      font-weight: bold;
+      text-shadow: 0 0 8px #222;
+      pointer-events: none;
+      user-select: none;
+      background: rgba(24,24,24,0.7);
+      border-radius: 8px;
+      padding: 2px 14px;
+    }
+    .top-nav {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 600;
+      margin: 18px 0 0 30px;
+      display: flex;
+      gap: 18px;
+    }
+    .top-nav a {
+      color: #ffe066;
+      font-size: 1.3em;
+      text-decoration: none;
+      background: #333;
+      padding: 6px 18px;
+      border-radius: 8px;
+    }
+    #trajektorie-controls {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      right: auto;
+      top: auto;
+      z-index: 1002;
+      background: #222;
+      color: #ffe066;
+      border-radius: 8px;
+      padding: 8px 18px;
+      box-shadow: 0 0 8px #000;
+      font-size: 1.1em;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      min-width: 320px;
+      transition: all 0.3s ease;
+    }
+    #trajektorie-controls.collapsed {
+      height: 50px;
+      overflow: hidden;
+      padding: 8px 18px;
+      gap: 0;
+    }
+    #traj-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+    #traj-toggle-btn {
+      background: #333;
+      color: #ffe066;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 1em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+    }
+    #traj-toggle-btn svg {
+      width: 16px;
+      height: 16px;
+      transition: transform 0.3s ease;
+    }
+    #trajektorie-controls.collapsed #traj-toggle-btn svg {
+      transform: rotate(180deg);
+    }
+    #traj-list-section {
+      width: 100%;
+    }
+    #trajektorie-list {
+      display: flex;
+      flex-direction: column;
+      max-height: 140px;
+      overflow-y: auto;
+      min-width: 220px;
+      margin-right: 10px;
+    }
+    #traj-file-section {
+      width: 100%;
+    }
+    #traj-file-section div {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    #traj-buttons-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    #trajektorie-controls.collapsed #traj-list-section,
+    #trajektorie-controls.collapsed #traj-file-section,
+    #trajektorie-controls.collapsed #traj-buttons-section {
+      display: none;
+    }
+    .traj-label {
+      margin-bottom: 2px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 2px 0;
+      border-radius: 4px;
+      transition: background 0.15s;
+      font-size: 1em;
+    }
+    .traj-label:hover {
+      background: #333;
+    }
+    .traj-color {
+      display: inline-block;
+      width: 18px;
+      height: 10px;
+      border-radius: 2px;
+      border: 1px solid #888;
+      margin-right: 2px;
+      transition: outline 0.15s;
+    }
+    .traj-label.selected {
+      background: #444;
+    }
+    #trajektorie-gpx {
+      margin-left: 8px;
+      background: #333;
+      color: #ffe066;
+      border-radius: 8px;
+      padding: 4px 8px;
+      border: none;
+      font-weight: bold;
+      box-shadow: 0 0 8px #000;
+    }
+    #center-btn {
+      margin-left: 8px;
+      background: #333;
+      color: #ffe066;
+      border-radius: 8px;
+      padding: 4px 12px;
+      border: none;
+      font-weight: bold;
+      box-shadow: 0 0 8px #000;
+      cursor: pointer;
+      font-size: 1em;
+      display: inline-block;
+    }
+    .leaflet-control-layers {
+      top: 20px !important;
+      right: 20px !important;
+      left: auto !important;
+      bottom: auto !important;
+    }
+    #adsb-panel {
+      position: absolute;
+      right: 20px;
+      bottom: 20px;
+      z-index: 1004;
+      display: none !important;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 12px;
+    }
+    #adsb-controls {
+      display: none !important;
+      background: #222;
+      color: #ffe066;
+      padding: 10px 18px 10px 18px;
+      border-radius: 8px;
+      box-shadow: 0 0 8px #000;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+      min-width: 260px;
+    }
+    #adsb-list {
+      display: none !important;
+      background: #222;
+      color: #ffe066;
+      padding: 10px 18px;
+      border-radius: 8px;
+      box-shadow: 0 0 8px #000;
+      max-height: 40vh;
+      overflow-y: auto;
+      min-width: 320px;
+      font-size: 1em;
+    }
+    #adsb-table th, #adsb-table td {
+      padding: 2px 4px;
+      border-bottom: 1px solid #333;
+    }
+    #adsb-table th {
+      background: #333;
+      color: #ffe066;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    #adsb-table tr:hover {
+      background: #444;
+    }
+    #gps-center-btn {
+      position: absolute;
+      top: 20px;
+      right: 180px;
+      z-index: 1200;
+      background: #333;
+      color: #ffe066;
+      border-radius: 8px;
+      padding: 8px 18px;
+      border: none;
+      font-size: 1.1em;
+      font-weight: bold;
+      box-shadow: 0 0 8px #000;
+      cursor: pointer;
+    }
+    @media (max-width: 800px) {
+    html, body, #map {
+      width: 100vw !important;
+      height: 100vh !important;
+      min-width: 100vw !important;
+      min-height: 100vh !important;
+      font-size: 1.05em;
+      overflow: hidden;
+    }
+    .top-nav {
+      flex-direction: column;
+      gap: 8px;
+      margin: 10px 0 0 10px;
+      font-size: 1em;
+    }
+    #trajektorie-controls {
+      min-width: 0;
+      font-size: 1em;
+      padding: 6px 6px;
+      left: 4px;
+      right: 4px;
+      bottom: 4px;
+    }
+    #adsb-panel, #adsb-controls, #adsb-list {
+      display: none !important;
+      min-width: 0;
+      font-size: 1em;
+      padding: 6px 6px;
+      right: 4px;
+      bottom: 4px;
+    }
+    #track-time-label, #draw-circle-btn, #gps-center-btn {
+      right: 4px !important;
+      left: auto !important;
+      font-size: 1em;
+      padding: 6px 10px;
+      top: 4px !important;
+    }
+    #compass-container {
+      top: 4px;
+      left: 40%; /* Auch im mobilen CSS angepasst */
+      transform: translateX(-50%);
+      width: 120px;
+      height: 120px;
+    }
+    #compass-rose {
+      width: 120px;
+      height: 120px;
+    }
+    #compass-arrow {
+      font-size: 4em;
+      top: 25px;
+    }
+    #compass-degree {
+      top: 80px;
+      font-size: 1.2em;
+      padding: 2px 8px;
+    }
+    #compass-info {
+      font-size: 1em;
+      padding: 2px 8px;
+      gap: 10px;
+    }
+    /* ...dein bisheriges CSS... */
+    #compass-info {
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      min-width: 0;
+      padding: 2px 8px;
+    }
+    #compass-info span {
+      font-size: 1.2em;
+      min-width: 0;
+      text-align: center;
+    }
+    #compass-info {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 1.2em;
+      color: #ffe066;
+      background: rgba(24,24,24,0.85);
+      border-radius: 8px;
+      padding: 2px 24px 2px 24px;
+      margin-top: -12px;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      z-index: 1100; /* Höher als Buttons */
+    }
+  }
+  </style>
+</head>
+<body>
+  <!-- Der Rest des HTML bleibt unverändert -->
+  <div class="top-nav">
+    <a href="live.html" target="_blank">Live data</a>
+    <!-- <a href="chart_1.html" target="_blank">Chart</a>
+    <a href="alt_wind_chart.html" target="_blank">Alt/Wind data</a>
+    <a href="ballast_drop.html" target="_blank">Ballast Drop Times</a> -->
+    <!-- <a href="map.html" target="_blank">Map</a> -->
+  </div>
+  <div id="trajektorie-controls">
+    <div id="traj-header">
+      <span>Trajectories:</span>
+      <button id="traj-toggle-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6,9 12,15 18,9"></polyline>
+        </svg>
+      </button>
+    </div>
+    <div id="traj-list-section">
+      <span id="trajektorie-list"></span>
+    </div>
+    <div id="traj-file-section">
+      <div style="display:flex;flex-direction:column;align-items:flex-start;">
+        <input type="file" id="trajektorie-gpx" accept=".gpx,.kml,.kmz" multiple title="Load GPX/KML/KMZ with multiple tracks"/>
+        <div id="trajektorie-filelist" style="margin-top:4px;color:#00bfff;font-size:1.05em;"></div>
+      </div>
+    </div>
+    <div id="traj-buttons-section">
+      <button id="center-btn" title="Center on all trajectories">Center</button>
+      <div style="margin-top:10px;">
+        <button id="export-settings-btn" style="background:#333;color:#ffe066;border-radius:6px;padding:4px 12px;border:none;cursor:pointer;">Export settings</button>
+        <button id="import-settings-btn" style="background:#333;color:#ffe066;border-radius:6px;padding:4px 12px;border:none;cursor:pointer;margin-left:8px;">Import settings</button>
+        <select id="import-settings-select" style="display:none;margin-left:8px;background:#333;color:#ffe066;border-radius:6px;padding:4px 8px;border:none;"></select>
+      </div>
+    </div>
+  </div>
+  
+  <div id="map"></div>
+  <label id="track-time-label" style="position:absolute;top:20px;right:460px;margin-right:0;color:#ffe066;z-index:1200;background:#222;padding:7px 14px 7px 14px;border-radius:8px;box-shadow:0 0 8px #000;font-size:1.1em;display:none;">
+    Track-time:
+    <select id="track-time-select" style="margin-left:6px;">
+      <option value="1">last 1h</option>
+      <option value="3">last 3h</option>
+      <option value="6" selected>last 6h</option>
+      <option value="12">last 12h</option>
+      <option value="24">last 24h</option>
+    </select>
+  </label>
+  <button id="draw-circle-btn"
+    style="position:absolute;top:20px;right:320px;background:#333;color:#ffe066;border-radius:8px;padding:8px 18px;border:none;font-size:1.1em;font-weight:bold;box-shadow:0 0 8px #000;cursor:pointer;z-index:1200;display:none;">
+    circle draw
+  </button>
+  <button id="gps-center-btn"
+    style="position:absolute;top:20px;right:180px;z-index:1200;background:#333;color:#ffe066;border-radius:8px;padding:8px 18px;border:none;font-size:1.1em;font-weight:bold;box-shadow:0 0 8px #000;cursor:pointer;display:none;">
+    Center GPS
+  </button>
+  <div id="circle-input-panel" style="display:none;position:absolute;top:70px;right:320px;z-index:1300;background:#222;padding:10px 18px;border-radius:8px;box-shadow:0 0 8px #000;">
+    <label style="color:#ffe066;">Lat: <input id="circle-lat" type="number" step="any" style="width:90px;"></label>
+    <label style="color:#ffe066;margin-left:8px;">Lon: <input id="circle-lng" type="number" step="any" style="width:90px;"></label>
+    <label style="color:#ffe066;margin-left:8px;">Radius [km]: <input id="circle-radius" type="number" step="any" style="width:70px;"></label>
+    <button id="circle-draw-manual" style="margin-left:10px;background:#333;color:#ffe066;border-radius:6px;padding:2px 10px;border:none;cursor:pointer;">draw circle</button>
+  </div>
+  <div id="adsb-panel" style="display:none;">
+    <div id="adsb-controls">
+      <div style="font-weight:bold;font-size:1.1em;margin-bottom:2px;">ADSBexchange Display</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input type="checkbox" id="adsb-rest-checkbox" style="margin-right:4px;">
+        <label for="adsb-rest-checkbox" style="cursor:pointer;">Show aircraft</label>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <label for="adsb-radius" style="font-weight:bold;">Radius:</label>
+        <select id="adsb-radius" style="font-size:1em;padding:2px 8px;border-radius:4px;">
+          <option value="10">10 nm</option>
+          <option value="25">25 nm</option>
+          <option value="50" selected>50 nm</option>
+          <option value="100">100 nm</option>
+          <option value="200">200 nm</option>
+        </select>
+        <button id="adsb-refresh" style="background:#333;color:#ffe066;border-radius:6px;padding:4px 12px;border:none;font-weight:bold;cursor:pointer;">Refresh</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <label for="adsb-filter" style="font-weight:bold;">Filter Kennungen:</label>
+        <input type="text" id="adsb-filter" placeholder="z.B. D-ABCD, N12345" style="font-size:1em;padding:2px 8px;border-radius:4px;width:150px;" value="FHMDF, DOWBA, GGASI, DORON, ECMAK, 4082BE, N526UP, N9YN, N396WB, DOWBI, DOSTL, DOOGB, FPPSE, HBQWV, DOTLI, DOOWE, DOABD, LYOJU, FPPGB, DOMFE, HBBLA, DORZL" readonly>
+      </div>
+    </div>
+    <div id="adsb-list">
+      <div style="font-weight:bold;font-size:1.1em;margin-bottom:6px;">Aircraft (ADSBexchange):</div>
+      <table id="adsb-table" style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr>
+            <th>Call</th>
+            <th>Type</th>
+            <th>Reg</th>
+            <th>Alt [ft]</th>
+            <th>Speed [kt]</th>
+            <th>Track</th>
+            <th>Lat</th>
+            <th>Lon</th>
+            <th>Country</th>
+          </tr>
+        </thead>
+        <tbody id="adsb-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+  <div id="compass-container">
+    <div id="compass-rose">
+      <div id="compass-info">
+          <div class="compass-info-block">
+            <span id="compass-alt" style="font-size:1.5em; font-weight:bold;">--</span>
+            <span style="font-size:1.1em;">ft</span>
+          </div>
+          <div class="compass-info-block">
+            <span id="compass-speed" style="font-size:1.5em; font-weight:bold;">--</span>
+            <span style="font-size:1.1em;">kts</span>
+          </div>
+        </div>
+      <div id="compass-arrow">&#8593;</div>
+      <div id="compass-degree">0°</div>
+    </div>
+  </div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    // Der gesamte JavaScript-Code bleibt unverändert
+    let map, marker, trackLine;
+    let trackCoords = [];
+    let trajTracks = [];
+    let trajLayers = [];
+    let trajFileLoaded = false;
+    let autoCenterGps = true;
+    let trajWaypointMarkers = [];
+    let trajHourMarkers = [];
+    let trajSelected = [];
+    let geoHeight = "--"; // Bodenhöhe, falls benötigt
+
+    let loadedFileNames = [];
+    let lastCircleData = null; // {lat, lng, radius}
+
+    // Farben für Trajektorien nach Druckhöhe (hPa)
+    const trajPressureColors = {
+      "950": "#ffa100",
+      "925": "#ffc0cb",
+      "900": "#ff69b4",
+      "850": "#fff800",
+      "800": "#00ff02",
+      "700": "#007cff",
+      "600": "#f73c59",
+      "500": "#ff00ff"
+    };
+    const trajDefaultColor = "#00bfff";
+
+    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    });
+    const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}.png', {
+      maxZoom: 19,
+      attribution: 'Tiles © Esri'
+    });
+    const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+      maxZoom: 17,
+      attribution: '© OpenTopoMap (CC-BY-SA)'
+    });
+
+    const openAIP = L.tileLayer('https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=f2e63a4dcf8df59d40b499866ae6bdda', {
+      maxZoom: 17,
+      attribution: 'Map data © OpenAIP',
+      tileSize: 256,
+      tms: false,
+      opacity: 1
+    });
+
+    const baseLayers = {
+      "OSM": osm,
+      "Satellite": esriSat,
+      "Topographic": topo
+    };
+    const overlays = {
+      "OpenAIP Airspace": openAIP
+    };
+
+    map = L.map('map', {
+      center: [48.79138, 14.974624],
+      zoom: 12,
+      layers: [osm]
+    });
+    L.control.layers(baseLayers, overlays).addTo(map);
+
+    setTimeout(() => {
+      // Suche das Layer-Control
+      const controls = document.querySelectorAll('.leaflet-control-layers-overlays label');
+      let openaipLabel = null;
+      controls.forEach(label => {
+        if (label.textContent.includes('OpenAIP')) openaipLabel = label;
+      });
+      if (openaipLabel) {
+        // ADSBExchange checkbox removed - ADSB is now hidden
+
+        const trajDiv = document.createElement('div');
+        trajDiv.style.display = "flex";
+        trajDiv.style.alignItems = "center";
+        trajDiv.style.marginTop = "4px";
+        trajDiv.innerHTML = `
+          <label style="color:#222;font-size:1em;cursor:pointer;display:flex;align-items:center;">
+            <input type="checkbox" id="traj-toggle-checkbox" style="margin-right:6px;" checked>
+            Trajectories
+          </label>
+        `;
+
+        // adsbDiv removed - skipping insertion
+        openaipLabel.parentNode.insertBefore(trajDiv, openaipLabel.nextSibling);
+
+        // ADSB checkbox event handler removed - ADSB is disabled
+        const trajToggleCheckbox = trajDiv.querySelector('#traj-toggle-checkbox');
+        trajToggleCheckbox.addEventListener('change', function() {
+          const trajCtrl = document.getElementById('trajektorie-controls');
+          if (this.checked) {
+            // Fenster, Trajektorien-Layer und Zeitpunkte einblenden
+            trajCtrl.style.display = "flex";
+            trajLayers.forEach(l => { if (!map.hasLayer(l)) l.addTo(map); });
+            // Zeitpunkte (Stundenmarker, Waypointmarker, Nummern) wieder einblenden
+            trajHourMarkers.forEach(m => { if (!map.hasLayer(m)) m.addTo(map); });
+            trajWaypointMarkers.forEach(m => { if (!map.hasLayer(m)) m.addTo(map); });
+            if (typeof trajHourNumberMarkers !== "undefined")
+              trajHourNumberMarkers.forEach(m => { if (!map.hasLayer(m)) m.addTo(map); });
+          } else {
+            // Fenster, Trajektorien-Layer und Zeitpunkte ausblenden
+            trajCtrl.style.display = "none";
+            trajLayers.forEach(l => { if (map.hasLayer(l)) map.removeLayer(l); });
+            // Zeitpunkte (Stundenmarker, Waypointmarker, Nummern) ausblenden
+            trajHourMarkers.forEach(m => { if (map.hasLayer(m)) map.removeLayer(m); });
+            trajWaypointMarkers.forEach(m => { if (map.hasLayer(m)) map.removeLayer(m); });
+            if (typeof trajHourNumberMarkers !== "undefined")
+              trajHourNumberMarkers.forEach(m => { if (!map.hasLayer(m)) m.addTo(map); });
+          }
+        });
+      }
+    }, 500);
+
+    openAIP.addTo(map);
+
+    map.on('layeradd', function(e) {
+      if (e.layer === openAIP) {
+        openAIP.bringToFront();
+      }
+    });
+
+    map.on('baselayerchange', function() {
+      if (!map.hasLayer(openAIP)) {
+        openAIP.addTo(map);
+      }
+      openAIP.bringToFront();
+    });
+
+    function parseGpxTime(str) {
+      if (!str) return null;
+      return new Date(str);
+    }
+
+    function loadTrackFromDb(hours = 6, doFit = true) {
+      const now = new Date();
+      const to = now.toISOString().slice(0,19).replace('T',' ');
+      const from = new Date(now.getTime() - hours * 60 * 60 * 1000).toISOString().slice(0,19).replace('T',' ');
+      const url = `track_api.php?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&interval=1`;  // Interval auf 1 gesetzt, um alle 360 Punkte zu laden
+
+      fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        const points = Array.isArray(data) ? data : (data.data || []);
+        if (!points || points.length === 0) {
+          console.warn("Keine Track-Daten erhalten.");
+          return;
+        }
+        const latlngs = points.map(point => [point.lat, point.lon]).filter(coord => coord[0] && coord[1]);
+        console.log(`Track-Daten geladen: ${latlngs.length} Punkte`);  // Debug: Anzahl der Punkte loggen
+        if (latlngs.length === 0) {
+          console.warn("Keine gültigen Koordinaten in Track-Daten.");
+          return;
+        }
+        if (window.dbTrackLine) map.removeLayer(window.dbTrackLine);
+        window.dbTrackLine = L.polyline(latlngs, {color: "#2196f3", weight: 4, opacity: 0.8}).addTo(map);
+        if (doFit) {
+          map.fitBounds(window.dbTrackLine.getBounds().pad(0.1));
+        }
+      })
+      .catch(err => {
+        console.error("Track-API-Fehler:", err);
+      });
+    }
+
+    document.getElementById('track-time-select').addEventListener('change', function() {
+      loadTrackFromDb(parseInt(this.value));
+    });
+
+    loadTrackFromDb(parseInt(document.getElementById('track-time-select').value));
+    // Automatische Aktualisierung alle 5 Minuten
+    setInterval(() => {
+      loadTrackFromDb(parseInt(document.getElementById('track-time-select').value), false);
+    }, 5 * 60 * 1000); // 5 Minuten
+
+    let trajTrackData = []; // speichert {latlngs, times, color, name, elevations, fileName}
+
+    document.getElementById('trajektorie-gpx').setAttribute('multiple', 'multiple');
+
+    document.getElementById('trajektorie-gpx').addEventListener('change', function(e) {
+      const files = Array.from(e.target.files);
+      if (!files.length) return;
+
+      files.forEach(file => {
+        if (!loadedFileNames.includes(file.name)) {
+          loadedFileNames.push(file.name);
+        }
+      });
+      
+      const fileListDivId = "trajektorie-filelist";
+      let fileListDiv = document.getElementById(fileListDivId);
+      if (!fileListDiv) {
+        fileListDiv = document.createElement("div");
+        fileListDiv.id = fileListDivId;
+        fileListDiv.style.marginTop = "8px";
+        fileListDiv.style.color = "#00bfff";
+        fileListDiv.style.fontSize = "1.05em";
+        document.getElementById('trajektorie-controls').appendChild(fileListDiv);
+      }
+      updateFileList();
+      
+      if (!files.length) return;
+
+      // Alles zurücksetzen
+      // trajLayers.forEach(l => map.removeLayer(l));
+      // trajLayers = [];
+      // trajWaypointMarkers.forEach(m => map.removeLayer(m));
+      // trajWaypointMarkers = [];
+      // trajHourMarkers.forEach(m => map.removeLayer(m));
+      // trajHourMarkers = [];
+      // trajHourNumberMarkers.forEach(m => map.removeLayer(m));
+      // trajHourNumberMarkers = [];
+      // document.getElementById('trajektorie-list').innerHTML = '';
+      // trajSelected = [];
+      // trajTrackData = [];
+
+      let filesLoaded = 0;
+      let loadedFiles = [];
+
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          // --- KMZ ---
+          if (file.name.toLowerCase().endsWith('.kmz')) {
+            if (typeof JSZip === "undefined") {
+              alert("KMZ support requires JSZip. Please include JSZip in your <head>.");
+              return;
+            }
+            JSZip.loadAsync(event.target.result).then(zip => {
+              const kmlFile = Object.keys(zip.files).find(name => name.toLowerCase().endsWith('.kml'));
+              if (!kmlFile) return;
+              zip.files[kmlFile].async('string').then(kmlText => {
+                const kmlDoc = (new DOMParser()).parseFromString(kmlText, "application/xml");
+                handleKmlOrGpx(kmlDoc, file);
+              });
+            });
+          }
+          // --- KML ---
+          else if (file.name.toLowerCase().endsWith('.kml')) {
+            const kmlDoc = (new DOMParser()).parseFromString(event.target.result, "application/xml");
+            handleKmlOrGpx(kmlDoc, file);
+          }
+          // --- GPX ---
+          else if (file.name.toLowerCase().endsWith('.gpx')) {
+            const gpxDoc = (new DOMParser()).parseFromString(event.target.result, "application/xml");
+            handleGpx(gpxDoc, file);
+          }
+        };
+        if (file.name.toLowerCase().endsWith('.kmz')) {
+          reader.readAsArrayBuffer(file);
+        } else {
+          reader.readAsText(file);
+        }
+      });
+
+      function handleGpx(gpxDoc, file) {
+        const tracks = gpxDoc.getElementsByTagName("trk");
+        for (let i = 0; i < tracks.length; i++) {
+          const trk = tracks[i];
+          const name = trk.getElementsByTagName("name")[0]?.textContent || `${file.name.replace(/\.gpx$/i, '')} Track ${i+1}`;
+          const pressureMatch = name.match(/(\d{3})h/);
+          const pressure = pressureMatch ? pressureMatch[1] : null;
+          const color = trajPressureColors[pressure] || trajDefaultColor;
+          const segs = trk.getElementsByTagName("trkseg");
+          let latlngs = [];
+          let times = [];
+          let elevations = []; // Höhen sammeln
+          for (let s = 0; s < segs.length; s++) {
+            const pts = segs[s].getElementsByTagName("trkpt");
+            for (let p = 0; p < pts.length; p++) {
+              const lat = parseFloat(pts[p].getAttribute("lat"));
+              const lng = parseFloat(pts[p].getAttribute("lon"));
+              latlngs.push([lat, lng]);
+              const timeNode = pts[p].getElementsByTagName("time")[0];
+              times.push(timeNode ? parseGpxTime(timeNode.textContent) : null);
+              const eleNode = pts[p].getElementsByTagName("ele")[0];
+              elevations.push(eleNode ? parseFloat(eleNode.textContent) : null);
+            }
+          }
+          const poly = L.polyline(latlngs, {color, weight: 4, opacity: 0.9, interactive: true});
+          poly.addTo(map);
+
+          // Popup bei Klick auf Trajektorie
+          poly.on('click', function(e) {
+            console.log('Polyline clicked:', e.latlng); // Debug
+            let minDist = Infinity, minIdx = -1;
+            for (let i = 0; i < latlngs.length; i++) {
+              const d = map.distance(e.latlng, L.latLng(latlngs[i]));
+              if (d < minDist) {
+                minDist = d;
+                minIdx = i;
+              }
+            }
+            if (minIdx >= 0) {
+              const t = times[minIdx];
+              const utc = t ? t.toISOString().replace('T', ' ').replace(/\..+/, '') + " UTC" : "--";
+              const lat = latlngs[minIdx][0].toFixed(6);
+              const lng = latlngs[minIdx][1].toFixed(6);
+
+              let speed = "--", dir = "--";
+              if (minIdx > 0 && times[minIdx] && times[minIdx-1]) {
+                const distMeters = map.distance(L.latLng(latlngs[minIdx-1]), L.latLng(latlngs[minIdx]));
+                const dt = (times[minIdx] - times[minIdx-1]) / 1000;
+                if (dt > 0) {
+                  speed = ((distMeters / dt) * 1.94384).toFixed(1);
+                }
+                const dy = latlngs[minIdx][0] - latlngs[minIdx-1][0];
+                const dx = latlngs[minIdx][1] - latlngs[minIdx-1][1];
+                dir = Math.atan2(dx, dy) * 180 / Math.PI;
+                dir = (dir + 360) % 360;
+                dir = dir.toFixed(0) + "°";
+              }
+
+              let sinceStart = "--";
+              if (times[minIdx] && times[0]) {
+                const diffSec = Math.round((times[minIdx] - times[0]) / 1000);
+                const h = Math.floor(diffSec / 3600);
+                const m = Math.floor((diffSec % 3600) / 60);
+                const s = diffSec % 60;
+                if (h > 0) {
+                  sinceStart = `${h} h ${m} min`;
+                } else if (m > 0) {
+                  sinceStart = `${m} min ${s} s`;
+                } else {
+                  sinceStart = `${s} s`;
+                }
+              }
+
+              L.popup()
+                .setLatLng(e.latlng)
+                .setContent(
+                  `<b style="color:#00bfff;font-size:1.1em;">${file.name}</b><br>
+                  <b>UTC:</b> ${utc}<br>
+                  <b>Since start:</b> ${sinceStart}<br>
+                  <b>Speed:</b> ${speed} kt<br>
+                  <b>Direction:</b> ${dir}<br>
+                  <b>Lat:</b> <span id="lat-val">${lat}</span>
+                  <button id="copy-lat-btn" style="margin-left:6px;padding:1px 8px;border-radius:6px;border:none;background:#333;color:#ffe066;cursor:pointer;">Copy</button><br>
+                  <b>Lon:</b> <span id="lon-val">${lng}</span>
+                  <button id="copy-lon-btn" style="margin-left:6px;padding:1px 8px;border-radius:6px;border:none;background:#333;color:#ffe066;cursor:pointer;">Copy</button><br>
+                  <button id="copy-coord-btn" style="margin-top:6px;padding:2px 10px;border-radius:6px;border:none;background:#333;color:#ffe066;cursor:pointer;">Copy lat,lon</button>`                )
+                .openOn(map);
+
+              setTimeout(() => {
+                const btnLat = document.getElementById('copy-lat-btn');
+                const btnLon = document.getElementById('copy-lon-btn');
+                const btnCoord = document.getElementById('copy-coord-btn');
+                if (btnLat) {
+                  btnLat.onclick = function() {
+                    if (navigator.clipboard) {
+                      navigator.clipboard.writeText(lat).then(() => {
+                        btnLat.textContent = "Copied!";
+                        setTimeout(() => btnLat.textContent = "Copy", 1200);
+                      });
+                    } else {
+                      window.prompt("Copy latitude:", lat);
+                    }
+                  };
+                }
+                if (btnLon) {
+                  btnLon.onclick = function() {
+                    if (navigator.clipboard) {
+                      navigator.clipboard.writeText(lng).then(() => {
+                        btnLon.textContent = "Copied!";
+                        setTimeout(() => btnLon.textContent = "Copy", 1200);
+                      });
+                    } else {
+                      window.prompt("Copy longitude:", lng);
+                    }
+                  };
+                }
+                if (btnCoord) {
+                  btnCoord.onclick = function() {
+                    const coordText = `${lat}, ${lng}`;
+                    if (navigator.clipboard) {
+                      navigator.clipboard.writeText(coordText).then(() => {
+                        btnCoord.textContent = "Copied!";
+                        setTimeout(() => btnCoord.textContent = "Copy lat,lon", 1200);
+                      });
+                    } else {
+                      window.prompt("Copy coordinates:", coordText);
+                    }
+                  };
+                }
+              }, 100);
+            } else {
+              console.log('No nearest point found for click.'); // Debug
+            }
+          });
+          trajLayers.push(poly);
+          trajSelected.push(true);
+          trajTrackData.push({latlngs, times, color, name, elevations, fileName: file.name}); // Höhen speichern
+
+          // Checkbox für Sichtbarkeit
+          const label = document.createElement('label');
+          label.className = 'traj-label';
+          label.style.cursor = "pointer";
+          
+
+          let maxAlt = null;
+          if (elevations.length > 0) {
+            const validElevations = elevations.filter(e => e !== null && !isNaN(e));
+            if (validElevations.length > 0) {
+              maxAlt = Math.max(...validElevations);
+            }
+          }
+          let heightText = (maxAlt !== null && isFinite(maxAlt)) ? `max ${maxAlt.toFixed(0)} m` : '';
+
+          label.innerHTML = `
+            <input type="checkbox" class="traj-checkbox" checked style="accent-color:${color};margin-right:6px;">
+            <span class="traj-color" style="background:${color}"></span>
+            <span>${name}</span>
+            <span style="color:#ffe066;font-size:0.96em;margin-left:8px;">
+              ${heightText}
+            </span>
+          `;
+          const idx = trajLayers.length - 1;
+          label.querySelector('input').addEventListener('change', function() {
+            trajSelected[idx] = this.checked;
+            if (this.checked) {
+              trajLayers[idx].addTo(map);
+            } else {
+              map.removeLayer(trajLayers[idx]);
+            }
+            updateAllHourAndTimeMarkers();
+          });
+          document.getElementById('trajektorie-list').appendChild(label);
+          loadedFiles.push({ file, name, poly, label });
+        }
+        const formData = new FormData();
+        formData.append('file', file);
+        fetch('upload_traj_file.php', {
+          method: 'POST',
+          body: formData
+        });
+        filesLoaded++;
+        if (filesLoaded === files.length) {
+          updateAllHourAndTimeMarkers();
+          // map.fitBounds(...) NICHT mehr automatisch aufrufen!
+        }
+        document.getElementById('trajektorie-gpx').value = '';
+      }
+
+      function handleKmlOrGpx(doc, file) {
+        const placemarks = doc.getElementsByTagName("Placemark");
+        for (let i = 0; i < placemarks.length; i++) {
+          const name = placemarks[i].getElementsByTagName("name")[0]?.textContent || file.name.replace(/\.(kml|kmz)$/i, '') + " Track";
+          const lineStrings = placemarks[i].getElementsByTagName("LineString");
+          for (let j = 0; j < lineStrings.length; j++) {
+            const coordsText = lineStrings[j].getElementsByTagName("coordinates")[0]?.textContent.trim();
+            if (!coordsText) continue;
+            const coords = coordsText.split(/\s+/).map(s => {
+              const [lng, lat] = s.split(',').map(Number);
+              return [lat, lng];
+            });
+            const poly = L.polyline(coords, {color: "#00bfff", weight: 4, opacity: 0.9, interactive: true});
+            poly.addTo(map);
+
+            // Popup bei Klick auf Trajektorie (nur Koordinaten)
+            poly.on('click', function(e) {
+              console.log('KML polyline clicked:', e.latlng); // Debug
+              let minDist = Infinity, minIdx = -1;
+              for (let k = 0; k < coords.length; k++) {
+                const d = map.distance(e.latlng, L.latLng(coords[k]));
+                if (d < minDist) {
+                  minDist = d;
+                  minIdx = k;
+                }
+              }
+              if (minIdx >= 0) {
+                const lat = coords[minIdx][0].toFixed(6);
+                const lng = coords[minIdx][1].toFixed(6);
+                L.popup()
+                  .setLatLng(e.latlng)
+                  .setContent(
+                    `<b style="color:#00bfff;font-size:1.1em;">${file.name}</b><br>
+                    <b>Lat:</b> <span id="lat-val">${lat}</span>
+                    <button id="copy-lat-btn" style="margin-left:6px;padding:1px 8px;border-radius:6px;border:none;background:#333;color:#ffe066;cursor:pointer;">Copy</button><br>
+                    <b>Lon:</b> <span id="lon-val">${lng}</span>
+                    <button id="copy-lon-btn" style="margin-left:6px;padding:1px 8px;border-radius:6px;border:none;background:#333;color:#ffe066;cursor:pointer;">Copy</button><br>
+                    <button id="copy-coord-btn" style="margin-top:6px;padding:2px 10px;border-radius:6px;border:none;background:#333;color:#ffe066;cursor:pointer;">Copy lat,lon</button>`                  )
+                  .openOn(map);
+
+                setTimeout(() => {
+                  const btnLat = document.getElementById('copy-lat-btn');
+                  const btnLon = document.getElementById('copy-lon-btn');
+                  const btnCoord = document.getElementById('copy-coord-btn');
+                  if (btnLat) {
+                    btnLat.onclick = function() {
+                      if (navigator.clipboard) {
+                        navigator.clipboard.writeText(lat).then(() => {
+                          btnLat.textContent = "Copied!";
+                          setTimeout(() => btnLat.textContent = "Copy", 1200);
+                        });
+                      } else {
+                        window.prompt("Copy latitude:", lat);
+                      }
+                    };
+                  }
+                  if (btnLon) {
+                    btnLon.onclick = function() {
+                      if (navigator.clipboard) {
+                        navigator.clipboard.writeText(lng).then(() => {
+                          btnLon.textContent = "Copied!";
+                          setTimeout(() => btnLon.textContent = "Copy", 1200);
+                        });
+                      } else {
+                        window.prompt("Copy longitude:", lng);
+                      }
+                    };
+                  }
+                  if (btnCoord) {
+                    btnCoord.onclick = function() {
+                      const coordText = `${lat}, ${lng}`;
+                      if (navigator.clipboard) {
+                        navigator.clipboard.writeText(coordText).then(() => {
+                          btnCoord.textContent = "Copied!";
+                          setTimeout(() => btnCoord.textContent = "Copy lat,lon", 1200);
+                        });
+                      } else {
+                        window.prompt("Copy coordinates:", coordText);
+                      }
+                    };
+                  }
+                }, 100);
+              } else {
+                console.log('No nearest point found for KML click.'); // Debug
+              }
+            });
+
+            trajLayers.push(poly);
+            trajSelected.push(true);
+            trajTrackData.push({latlngs: coords, times: [], color: "#00bfff", name, elevations: [], fileName: file.name}); // Keine Höhen für KML
+
+            const allNames = trajTrackData.map(t => t.name || "Track").filter(Boolean);
+            fileListDiv.innerHTML = "<b>Loaded files:</b><br>" + allNames.map(n => `<span style="margin-right:12px;">${n}</span>`).join("<br>");
+
+            // Checkbox für Sichtbarkeit
+            const label = document.createElement('label');
+            label.className = 'traj-label';
+            label.style.cursor = "pointer";
+            label.innerHTML = `
+              <input type="checkbox" class="traj-checkbox" checked style="accent-color:#00bfff;margin-right:6px;">
+              <span class="traj-color" style="background:#00bfff"></span>
+              <span>${name}</span>
+            `;
+            const idx = trajLayers.length - 1;
+            label.querySelector('input').addEventListener('change', function() {
+              trajSelected[idx] = this.checked;
+              if (this.checked) {
+                trajLayers[idx].addTo(map);
+              } else {
+                map.removeLayer(trajLayers[idx]);
+              }
+              updateAllHourAndTimeMarkers();
+            });
+            document.getElementById('trajektorie-list').appendChild(label);
+            loadedFiles.push({ file, name, poly, label });
+          }
+        }
+        filesLoaded++;
+        if (filesLoaded === files.length) {
+          updateAllHourAndTimeMarkers();
+          // map.fitBounds(...) NICHT mehr automatisch aufrufen!
+        }
+      }
+    });
+
+    function updateFileList() {
+      const fileListDiv = document.getElementById("trajektorie-filelist");
+      if (fileListDiv) {
+        fileListDiv.innerHTML = "<b>Loaded files:</b><br>" + loadedFileNames.map(n => `<span style="margin-right:12px;">${n} <button onclick="removeFile('${n.replace(/'/g, "\\'")}')" style="background:#f00;color:#fff;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:0.9em;">X</button></span>`).join(" ");
+      }
+    }
+
+    function removeFile(fileName) {
+      // Entferne aus loadedFileNames
+      loadedFileNames = loadedFileNames.filter(n => n !== fileName);
+      // Entferne Tracks mit diesem fileName
+      const toRemove = [];
+      trajTrackData.forEach((track, idx) => {
+        if (track.fileName === fileName) {
+          toRemove.push(idx);
+        }
+      });
+      // Entferne rückwärts
+      toRemove.reverse().forEach(idx => {
+        if (map.hasLayer(trajLayers[idx])) map.removeLayer(trajLayers[idx]);
+        trajLayers.splice(idx, 1);
+        trajSelected.splice(idx, 1);
+        trajTrackData.splice(idx, 1);
+        // Entferne Label
+        const labels = document.querySelectorAll('.traj-label');
+        if (labels[idx]) labels[idx].remove();
+      });
+      // Aktualisiere Marker
+      updateAllHourAndTimeMarkers();
+      // Aktualisiere Liste
+      updateFileList();
+    }
+
+    let trajHourNumberMarkers = [];
+    function updateAllHourAndTimeMarkers() {
+      trajHourMarkers.forEach(m => map.removeLayer(m));
+      trajWaypointMarkers.forEach(m => map.removeLayer(m));
+      trajHourNumberMarkers.forEach(m => map.removeLayer(m));
+      trajHourMarkers = [];
+      trajWaypointMarkers = [];
+      trajHourNumberMarkers = [];
+      for (let i = 0; i < trajTrackData.length; i++) {
+        if (!trajSelected[i]) continue;
+        showTrajHourMarkers(trajTrackData[i].latlngs, trajTrackData[i].times, trajTrackData[i].color);
+        showTrajCurrentTimeMarker(trajTrackData[i].latlngs, trajTrackData[i].times, trajTrackData[i].color);
+      }
+    }
+
+    function showTrajHourMarkers(latlngs, times, color) {
+      if (!times || times.length === 0) return;
+      let lastHour = null;
+      for (let i = 0; i < times.length; i++) {
+        const t = times[i];
+        if (!t) continue;
+        const hour = t.getUTCHours();
+        if (lastHour === null || hour !== lastHour) {
+          const marker = L.circleMarker(latlngs[i], {
+            radius: 10,
+            color: color,
+            fillColor: "#fff",
+            fillOpacity: 0.7,
+            weight: 3
+          }).addTo(map);
+          marker.bindTooltip(`${hour}:00`, {permanent: false, direction: 'top'});
+          trajHourMarkers.push(marker);
+          const hourIcon = L.divIcon({
+            className: '',
+            html: `<div style="font-size:1.1em;font-weight:bold;color:${color};text-shadow:0 0 4px #fff;">${hour}</div>`,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+          });
+          const hourNumberMarker = L.marker(latlngs[i], {icon: hourIcon, interactive: false}).addTo(map);
+          trajHourNumberMarkers.push(hourNumberMarker);
+          lastHour = hour;
+        }
+      }
+    }
+
+    function showTrajCurrentTimeMarker(latlngs, times, color) {
+      if (!times || times.length === 0) return;
+      const now = new Date();
+      let minDiff = Infinity;
+      let minIdx = -1;
+      for (let i = 0; i < times.length; i++) {
+        if (!times[i]) continue;
+        const diff = Math.abs(times[i] - now);
+        if (diff < minDiff) {
+          minDiff = diff;
+          minIdx = i;
+        }
+      }
+      if (minIdx >= 0) {
+        const marker = L.circleMarker(latlngs[minIdx], {
+          radius: 12,
+          color: "#222",
+          fillColor: color,
+          fillOpacity: 1,
+          weight: 4
+        }).addTo(map);
+        marker.bindTooltip("Jetzt", {permanent: false, direction: 'right'});
+        trajWaypointMarkers.push(marker);
+      }
+    }
+
+    function centerOnGps() {
+      autoCenterGps = true;
+      if (marker && marker.getLatLng) {
+        map.setView([data.gps_lat, data.gps_lng], map.getZoom());
+      }
+    }
+
+    document.getElementById('center-btn').addEventListener('click', function() {
+      const visibleLayers = trajLayers.filter((l, idx) => trajSelected[idx]);
+      if (visibleLayers.length > 0) {
+        const group = new L.featureGroup(visibleLayers);
+        map.fitBounds(group.getBounds().pad(0.1));
+      }
+    });
+    document.getElementById('gps-center-btn').addEventListener('click', centerOnGps);
+
+    map.on('movestart', function(e) {
+      if (autoCenterGps) {
+        autoCenterGps = false;
+      }
+    });
+
+    // --- ADSBexchange REST-API Live Traffic ---
+    let adsbMarkers = [];
+    let adsbRestActive = false;
+    let adsbRadius = 50;
+    let adsbInterval = null;
+
+    let adsbFilterList = ['FHMDF', 'DOWBA', 'GGASI', 'DORON', 'ECMAK', '4082BE', 'N526UP', 'N9YN', 'N396WB', 'DOWBI', 'DOSTL', 'DOOGB', 'FPPSE', 'HBQWV', 'DOTLI', 'DOOWE', 'DOABD', 'LYOJU', 'FPPGB', 'DOMFE', 'HBBLA', 'DORZL']; // Feste Filterliste
+
+    const countryMapping = {
+      'FHMDF': 'FRA 3',
+      'DOWBA': 'POL 2',
+      'GGASI': 'GBR 2',
+      'DORON': 'BEL 1',
+      'ECMAK': 'ESP 1',
+      '4082BE': 'GBR 3',
+      'N526UP': 'USA 1',
+      'N9YN': 'USA 3',
+      'N396WB': 'USA 2',
+      'DOWBI': 'GBR 1',
+      'DOSTL': 'GER 3',
+      'DOOGB': 'GER 2',
+      'FPPSE': 'FRA 2',
+      'HBQWV': 'SUI 2',
+      'DOTLI': 'ITA 1',
+      'DOOWE': 'BEL 3',
+      'DOABD': 'POL 1',
+      'LYOJU': 'LTU 1',
+      'FPPGB': 'FRA 1',
+      'DOMFE': 'GER 1',
+      'HBBLA': 'SUI 1',
+      'DORZL': 'AUT 1'
+    };
+
+    document.getElementById('adsb-radius').addEventListener('change', function() {
+      adsbRadius = parseInt(this.value);
+      if (adsbRestActive) fetchADSBexchangeTraffic();
+    });
+    document.getElementById('adsb-refresh').addEventListener('click', function() {
+      if (adsbRestActive) fetchADSBexchangeTraffic();
+    });
+
+    document.getElementById('adsb-rest-checkbox').addEventListener('change', function() {
+      adsbRestActive = this.checked;
+      if (!adsbRestActive) {
+        adsbMarkers.forEach(m => map.removeLayer(m));
+        adsbMarkers = [];
+        document.getElementById('adsb-table-body').innerHTML = '';
+        if (adsbInterval) {
+          clearInterval(adsbInterval);
+          adsbInterval = null;
+        }
+      } else {
+        fetchADSBexchangeTraffic();
+        if (!adsbInterval) {
+          adsbInterval = setInterval(fetchADSBexchangeTraffic, 120000);
+        }
+      }
+    });
+
+    function fetchADSBexchangeTraffic() {
+      if (!adsbRestActive) return;
+      const center = map.getCenter();
+      const lat = center.lat.toFixed(5);
+      const lon = center.lng.toFixed(5);
+      const dist = adsbRadius;
+      fetch(`https://adsbexchange-com1.p.rapidapi.com/v2/lat/${lat}/lon/${lon}/dist/${dist}/`, {
+        method: 'GET',
+        headers: {
+          'X-Rapidapi-Key': '1e70a120c1msh5d3ab523f2a21d1p18e559jsn754aeaf2a836',
+          'X-Rapidapi-Host': 'adsbexchange-com1.p.rapidapi.com'
+        }
+      })
+      .then(r => r.json())
+      .then(data => {
+        adsbMarkers.forEach(m => map.removeLayer(m));
+        adsbMarkers = [];
+        const tbody = document.getElementById('adsb-table-body');
+        tbody.innerHTML = '';
+        if (!data.ac) return;
+        data.ac.forEach(ac => {
+          if (ac.lat && ac.lon) {
+            // Filter prüfen
+            const callsign = (ac.flight || '').toUpperCase();
+            const reg = (ac.r || '').toUpperCase();
+            if (
+              adsbFilterList.length > 0 &&
+              !adsbFilterList.some(filter => callsign.includes(filter) || reg.includes(filter))
+            ) {
+              return;
+            }
+            // Ländercodes aus Zuordnung holen (verbesserte Zuordnung)
+            let countryCode = '';
+            for (const key in countryMapping) {
+              if (
+                callsign === key ||
+                reg === key ||
+                callsign.includes(key) ||
+                reg.includes(key)
+              ) {
+                countryCode = countryMapping[key];
+                break;
+              }
+            }
+            // Leuchtrot für Pfeil und Text
+            const hdg = ac.track || 0;
+            let icon = L.divIcon({
+              className: '',
+              html: `
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                  <svg width="38" height="38" style="transform:rotate(${hdg}deg);margin-bottom:2px;">
+                    <polygon points="19,4 32,34 19,26 6,34" fill="#ff1744" stroke="#fff" stroke-width="3"/>
+                  </svg>
+                  <div style="font-size:1.1em;color:#ff1744;font-weight:bold;text-align:center;">${callsign}</div>
+                  <div style="font-size:1.6em;color:#ff1744;font-weight:bold;text-align:center;line-height:1.1;">${countryCode}</div>
+                </div>
+              `,
+              iconSize: [38,52],
+              iconAnchor: [19,26]
+            });
+            const marker = L.marker([ac.lat, ac.lon], {icon})
+              .bindPopup(`<b>Callsign:</b> ${ac.flight || '-'}<br><b>Altitude:</b> ${ac.alt_baro || '-'} ft<br><b>Speed:</b> ${ac.gs || '-'} kt<br><b>Type:</b> ${ac.type || '-'}<br><b>Reg:</b> ${ac.r || '-'}<br><b>Track:</b> ${ac.track || '-'}°<br><b>Country:</b> ${countryCode}`);
+            marker.addTo(map);
+            adsbMarkers.push(marker);
+
+            const row = document.createElement('tr');
+            row.style.cursor = 'pointer';
+            row.innerHTML = `
+              <td>${ac.flight || ''}</td>
+              <td>${ac.type || ''}</td>
+              <td>${ac.r || ''}</td>
+              <td style="text-align:right;">${ac.alt_baro || ''}</td>
+              <td style="text-align:right;">${ac.gs || ''}</td>
+              <td style="text-align:right;">${ac.track || ''}</td>
+              <td style="text-align:right;">${ac.lat.toFixed(4)}</td>
+              <td style="text-align:right;">${ac.lon.toFixed(4)}</td>
+              <td>${countryCode}</td>
+            `;
+            row.addEventListener('click', () => {
+              map.setView([ac.lat, ac.lon], Math.max(map.getZoom(), 12));
+              marker.openPopup();
+            });
+            tbody.appendChild(row);
+          }
+        });
+      });
+    }
+
+    function parseTextData(text) {
+      const lines = text.split('\n');
+      const data = {};
+      lines.forEach(line => {
+        let [key, value] = line.split('=');
+        if (key && value !== undefined) {
+          data[key.trim()] = value.trim();
+        }
+      });
+      data.gps_lat = parseFloat(data.gps_lat || "0");
+      data.gps_lng = parseFloat(data.gps_lng || "0");
+      data.vario = parseFloat(data.vario || "0");
+      data.temp = data.temp !== undefined ? parseFloat(data.temp) : undefined;
+      data.humidity = data.humidity !== undefined ? parseFloat(data.rh) : undefined;
+      return {
+        zeit: data.gps_time || "--:--:--",
+        qnh: data.qnh || "----",
+        hoehe_ft: data.alt_ft || "",
+        hoehe_m: data.alt_m || "",
+        gps_alt: data.gps_alt || "",
+        gps_course: data.gps_course || "",
+        gps_speed: data.gps_speed || "",
+        gps_sats: parseInt(data.gps_sats || "0"),
+        peak: data.peak || "",
+        valley: data.valley || "",
+        temp: data.temp,
+        humidity: data.humidity,
+        vario: data.vario,
+        gps_lat: data.gps_lat,
+        gps_lng: data.gps_lng,
+        ballast_drop: data.ballast_drop || "--"
+      };
+    }
+
+    function fetchGroundElevation(lat, lng, callback) {
+      fetch(`proxy.php?locations=${lat},${lng}`)
+        .then(r => r.json())
+        .then(json => {
+          if (json && json.results && json.results[0] && typeof json.results[0].elevation === "number") {
+            callback(json.results[0].elevation);
+          } else {
+            callback(null);
+          }
+        })
+        .catch(() => callback(null));
+    }
+
+    let firstGpsCenterDone = false;
+
+    function updateMap(data) {
+      if (!data.gps_lat || !data.gps_lng || isNaN(data.gps_lat) || isNaN(data.gps_lng)) return;
+
+      trackCoords.push([data.gps_lat, data.gps_lng]);
+      if (trackCoords.length > 500) trackCoords.shift();
+
+      document.getElementById('compass-alt').textContent = data.hoehe_ft || '--';
+      document.getElementById('compass-speed').textContent = data.gps_speed || '--';
+
+      let course = parseFloat(data.gps_course);
+      if (!isNaN(course)) {
+        document.getElementById('compass-arrow').style.transform =
+          `translateX(-50%) rotate(${course}deg)`;
+        document.getElementById('compass-degree').textContent = `${Math.round(course)}°`;
+      } else {
+        document.getElementById('compass-arrow').style.transform = `translateX(-50%) rotate(0deg)`;
+        document.getElementById('compass-degree').textContent = `0°`;
+      }
+
+      let popupText = `
+        <b>Time (UTC):</b> ${data.zeit}<br>
+        <b>Altitude (ft):</b> ${data.hoehe_ft}<br>
+        <b>Altitude (m):</b> ${data.hoehe_m}<br>
+        <b>GPS Altitude:</b> ${data.gps_alt}<br>
+        <b>GND elev.:</b> ${geoHeight}<br>
+        <b>Speed (kt):</b> ${data.gps_speed}<br>
+        <b>Course:</b> ${data.gps_course}<br>
+        <b>Vario:</b> ${data.vario}<br>
+      `;
+
+      if (!marker) {
+        marker = L.marker([data.gps_lat, data.gps_lng]).addTo(map)
+          .bindPopup(popupText, { maxWidth: 400, minWidth: 260, autoPan: true })
+          .openPopup();
+      } else {
+        marker.setLatLng([data.gps_lat, data.gps_lng])
+          .setPopupContent(popupText);
+      }
+
+      if (autoCenterGps || !firstGpsCenterDone) {
+        map.setView([data.gps_lat, data.gps_lng], map.getZoom());
+        firstGpsCenterDone = true;
+      }
+
+      // GND Elevation asynchron holen und Popup aktualisieren
+      fetchGroundElevation(data.gps_lat, data.gps_lng, function(groundElevation) {
+        geoHeight = groundElevation !== null ? groundElevation.toFixed(1) + " m" : "--";
+        if (marker) {
+          let popupText = `
+            <b>Time (UTC):</b> ${data.zeit}<br>
+            <b>Altitude (ft):</b> ${data.hoehe_ft}<br>
+            <b>Altitude (m):</b> ${data.hoehe_m}<br>
+            <b>GPS Altitude:</b> ${data.gps_alt}<br>
+            <b>GND elev.:</b> ${geoHeight}<br>
+            <b>Speed (kt):</b> ${data.gps_speed}<br>
+            <b>Course:</b> ${data.gps_course}<br>
+            <b>Vario:</b> ${data.vario}<br>
+          `;
+          marker.setPopupContent(popupText);
+        }
+      });
+    }
+
+    function fetchAndUpdate() {
+      fetch('wuzi_data.txt')
+        .then(r => r.text())
+        .then(text => {
+          const data = parseTextData(text);
+          updateMap(data);
+        });
+    }
+    setInterval(fetchAndUpdate, 2000);
+    fetchAndUpdate();
+
+    map.on('dblclick', function(e) {
+      const lat = e.latlng.lat.toFixed(6);
+      const lng = e.latlng.lng.toFixed(6);
+      const coordText = `${lat}, ${lng}`;
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(coordText).then(() => {
+          L.popup()
+            .setLatLng(e.latlng)
+            .setContent(`Coordinates copied:<br><b>${coordText}</b>`)
+            .openOn(map);
+        });
+      } else {
+        window.prompt("Copy coordinates:", coordText);
+      }
+    });
+
+    let drawCircleMode = false;
+    let tempCircle = null;
+    let tempCircleLabel = null;
+    let circleStartLatLng = null;
+    let tempCircleCenterMarker = null;
+
+    const circleInputPanel = document.getElementById('circle-input-panel');
+    const circleLatInput = document.getElementById('circle-lat');
+    const circleLngInput = document.getElementById('circle-lng');
+    const circleRadiusInput = document.getElementById('circle-radius');
+    const circleDrawManualBtn = document.getElementById('circle-draw-manual');
+
+    document.getElementById('draw-circle-btn').addEventListener('click', function() {
+      drawCircleMode = !drawCircleMode;
+      this.style.background = drawCircleMode ? "#ffe066" : "#333";
+      this.style.color = drawCircleMode ? "#222" : "#ffe066";
+      circleInputPanel.style.display = drawCircleMode ? "block" : "none";
+      if (!drawCircleMode) {
+        circleStartLatLng = null;
+        // Kreis und Label bleiben erhalten!
+        if (tempCircleLabel) { map.removeLayer(tempCircleLabel); tempCircleLabel = null; }
+        // KEIN Popup mehr anzeigen!
+      } else {
+        // Wenn ein alter Kreis existiert, Popup mit alten Daten anzeigen
+        if (lastCircleData && tempCircle) {
+          if (tempCircleLabel) { map.removeLayer(tempCircleLabel); tempCircleLabel = null; }
+          tempCircleLabel = L.popup({closeButton:false, autoClose:false, closeOnClick:false, className:"circle-radius-label"})
+            .setLatLng([lastCircleData.lat, lastCircleData.lng])
+            .setContent(`
+            `)
+            .addTo(map);
+        }
+      }
+    });
+
+    circleDrawManualBtn.addEventListener('click', function() {
+      const lat = parseFloat(circleLatInput.value);
+      const lng = parseFloat(circleLngInput.value);
+      const radius = parseFloat(circleRadiusInput.value) * 1000;
+      if (isNaN(lat) || isNaN(lng) || isNaN(radius) || radius <= 0) {
+        alert("Bitte gültige Werte für Lat, Lon und Radius eingeben!");
+        return;
+      }
+      if (tempCircle) { map.removeLayer(tempCircle); tempCircle = null; }
+      if (tempCircleLabel) { map.removeLayer(tempCircleLabel); tempCircleLabel = null; }
+      tempCircle = L.circle([lat, lng], {
+        radius,
+        color: '#e53935',
+        fillColor: '#e53935',
+        fillOpacity: 0.15,
+        weight: 2,
+        interactive: false,
+        pane: 'shadowPane'
+      }).addTo(map);
+
+      if (tempCircleCenterMarker) { map.removeLayer(tempCircleCenterMarker); tempCircleCenterMarker = null; }
+      tempCircleCenterMarker = L.circleMarker([lat, lng], {
+        radius: 7,
+        color: '#e53935',
+        fillColor: '#fff',
+        fillOpacity: 1,
+        weight: 3,
+        interactive: false,
+        pane: 'shadowPane'
+      }).addTo(map);
+
+      lastCircleData = { lat, lng, radius };
+      // Popup nur anzeigen, wenn drawCircleMode aktiv ist:
+      if (drawCircleMode) {
+        tempCircleLabel = L.popup({closeButton:false, autoClose:false, closeOnClick:false, className:"circle-radius-label"})
+          .setLatLng([lat, lng])
+          .setContent(`
+            <div style="background:#222;padding:2px 8px;border-radius:6px;color:#ffe066;font-weight:bold;font-size:1.1em;">
+            </div>
+          `)
+          .addTo(map);
+      }
+    });
+
+    map.on('mousedown', function(e) {
+      if (!drawCircleMode) return;
+      if (tempCircle) { map.removeLayer(tempCircle); tempCircle = null; }
+      circleStartLatLng = e.latlng;
+      map.dragging.disable();
+      if (tempCircleCenterMarker) { map.removeLayer(tempCircleCenterMarker); tempCircleCenterMarker = null; }
+      tempCircleCenterMarker = L.circleMarker(circleStartLatLng, {
+        radius: 7,
+        color: '#e53935',
+        fillColor: '#fff',
+        fillOpacity: 1,
+        weight: 3,
+        interactive: false,
+        pane: 'shadowPane'
+      }).addTo(map);
+    });
+
+    map.on('mousemove', function(e) {
+      if (!drawCircleMode || !circleStartLatLng) return;
+      const radius = map.distance(circleStartLatLng, e.latlng);
+      if (tempCircle) tempCircle.setRadius(radius);
+      else tempCircle = L.circle(circleStartLatLng, {
+        radius,
+        color: '#e53935',
+        fillColor: '#e53935',
+        fillOpacity: 0.15,
+        weight: 2,
+        interactive: false,
+        pane: 'shadowPane'
+      }).addTo(map);
+
+      // Popup nur anzeigen, wenn drawCircleMode aktiv ist:
+      if (drawCircleMode) {
+        const midLat = (circleStartLatLng.lat + e.latlng.lat) / 2;
+        const midLng = (circleStartLatLng.lng + e.latlng.lng) / 2;
+        const labelText = `<div style="background:#222;padding:2px 8px;border-radius:6px;color:#ffe066;font-weight:bold;font-size:1.1em;">
+          <div>Lat: ${circleStartLatLng.lat.toFixed(6)}</div>
+          <div>Lon: ${circleStartLatLng.lng.toFixed(6)}</div>
+          <div>Radius: ${(radius/1000).toFixed(2)} km</div>
+        </div>`;
+        if (tempCircleLabel) {
+          tempCircleLabel.setLatLng([midLat, midLng]).setContent(labelText);
+        } else {
+          tempCircleLabel = L.popup({closeButton:false, autoClose:false, closeOnClick:false, className:"circle-radius-label"})
+            .setLatLng([midLat, midLng])
+            .setContent(labelText)
+            .addTo(map);
+        }
+      } else {
+        // Popup ausblenden, falls Kreis-Modus deaktiviert wurde
+        if (tempCircleLabel) { map.removeLayer(tempCircleLabel); tempCircleLabel = null; }
+      }
+    });
+
+    map.on('mouseup', function(e) {
+      if (!drawCircleMode || !circleStartLatLng) return;
+      map.dragging.enable();
+      circleStartLatLng = null;
+      if (drawCircleMode && tempCircle) {
+        const center = tempCircle.getLatLng();
+        const radius = tempCircle.getRadius();
+        lastCircleData = { lat: center.lat, lng: center.lng, radius };
+      }
+      // Kreis bleibt sichtbar, Label bleibt
+      // Wenn du möchtest, dass der Kreis nach dem Zeichnen verschwindet, entferne ihn hier.
+    });
+
+    // Export-Funktion
+    document.getElementById('export-settings-btn').addEventListener('click', function() {
+      // Trajektorien-Daten sammeln
+      const trajData = trajTrackData.map(track => ({
+        name: track.name,
+        color: track.color,
+        latlngs: track.latlngs,
+        times: track.times ? track.times.map(t => t ? (typeof t === "string" ? t : t.toISOString()) : null) : [],
+        elevations: Array.isArray(track.elevations) ? track.elevations : [], // Sicherstellen, dass es ein Array ist
+        fileName: track.fileName
+      }));
+
+      const exportData = {
+        loadedFiles: loadedFileNames,
+        circle: lastCircleData,
+        trackTime: document.getElementById('track-time-select').value,
+        mapZoom: map.getZoom(),
+        mapCenter: map.getCenter(),
+        trajData: trajData
+      };
+
+      // Timestamp für Dateiname
+      const now = new Date();
+      const timestamp = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + '_' + String(now.getHours()).padStart(2, '0') + '-' + String(now.getMinutes()).padStart(2, '0') + '-' + String(now.getSeconds()).padStart(2, '0');
+      const filename = 'wuzi_map_settings_' + timestamp + '.json';
+
+      fetch('save_settings.php?filename=' + encodeURIComponent(filename), {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(exportData, null, 2)
+      })
+      .then(r => r.text())
+      .then(msg => {
+        alert("Einstellungen wurden als '" + filename + "' gespeichert!\n" + msg);
+      })
+      .catch(err => {
+        alert("Fehler beim Speichern: " + err);
+      });
+    });
+
+    // Import-Funktion: Button lädt Liste der JSON-Dateien vom Server
+    document.getElementById('import-settings-btn').addEventListener('click', function() {
+      fetch('list_settings.php') // Annahme: PHP-Script, das JSON-Array mit Dateinamen zurückgibt
+        .then(r => r.json())
+        .then(files => {
+          const select = document.getElementById('import-settings-select');
+          select.innerHTML = '<option value="">Select a settings file...</option>';
+          files.forEach(file => {
+            const option = document.createElement('option');
+            option.value = file;
+            option.textContent = file;
+            select.appendChild(option);
+          });
+          select.style.display = 'inline-block';
+        })
+        .catch(err => {
+          alert("Fehler beim Laden der Dateiliste: " + err);
+        });
+    });
+
+    // Beim Auswählen einer Datei im Select, lade und importiere sie
+    document.getElementById('import-settings-select').addEventListener('change', function() {
+      const filename = this.value;
+      if (!filename) return;
+      fetch('settings/' + filename) // Annahme: Dateien liegen in 'settings/' Ordner
+        .then(r => r.json())
+        .then(data => {
+          // Import-Logik wie zuvor
+          // Vor dem Laden alle alten Daten entfernen
+          trajLayers.forEach(l => map.removeLayer(l));
+          trajLayers = [];
+          trajTrackData = [];
+          trajSelected = [];
+          document.getElementById('trajektorie-list').innerHTML = '';
+          // Alte Marker entfernen
+          trajHourMarkers.forEach(m => map.removeLayer(m));
+          trajWaypointMarkers.forEach(m => map.removeLayer(m));
+          trajHourNumberMarkers.forEach(m => map.removeLayer(m));
+          trajHourMarkers = [];
+          trajWaypointMarkers = [];
+          trajHourNumberMarkers = [];
+          // Dateinamen zurücksetzen
+          loadedFileNames = [];
+
+          // Track-Time
+          if (data.trackTime) {
+            document.getElementById('track-time-select').value = data.trackTime;
+            loadTrackFromDb(parseInt(data.trackTime), false);
+          }
+          // Kreis
+          if (data.circle && typeof data.circle.lat === "number" && typeof data.circle.lng === "number" && typeof data.circle.radius === "number") {
+            if (tempCircle) { map.removeLayer(tempCircle); tempCircle = null; }
+            if (tempCircleLabel) { map.removeLayer(tempCircleLabel); tempCircleLabel = null; }
+            tempCircle = L.circle([data.circle.lat, data.circle.lng], {
+              radius: data.circle.radius,
+              color: '#e53935',
+              fillColor: '#e53935',
+              fillOpacity: 0.15,
+              weight: 2,
+              interactive: false,
+              pane: 'shadowPane'
+            }).addTo(map);
+            if (tempCircleCenterMarker) { map.removeLayer(tempCircleCenterMarker); tempCircleCenterMarker = null; }
+            tempCircleCenterMarker = L.circleMarker([data.circle.lat, data.circle.lng], {
+              radius: 7,
+              color: '#e53935',
+              fillColor: '#fff',
+              fillOpacity: 1,
+              weight: 3,
+              interactive: false,
+              pane: 'shadowPane'
+            }).addTo(map);
+            lastCircleData = data.circle;
+          }
+          // Trajektorien-Daten laden (nur aus trajData!)
+          if (Array.isArray(data.trajData) && data.trajData.length > 0) {
+            data.trajData.forEach(track => {
+              const poly = L.polyline(track.latlngs, {color: track.color || "#00bfff", weight: 4, opacity: 0.9, interactive: true});
+              poly.addTo(map);
+
+              // Popup-Logik hinzufügen (wie in handleGpx)
+              poly.on('click', function(e) {
+                let minDist = Infinity, minIdx = -1;
+                for (let i = 0; i < track.latlngs.length; i++) {
+                  const d = map.distance(e.latlng, L.latLng(track.latlngs[i]));
+                  if (d < minDist) {
+                    minDist = d;
+                    minIdx = i;
+                  }
+                }
+                if (minIdx >= 0) {
+                  const t = track.times && track.times[minIdx] ? new Date(track.times[minIdx]) : null;
+                  const utc = t ? t.toISOString().replace('T', ' ').replace(/\..+/, '') + " UTC" : "--";
+                  const lat = track.latlngs[minIdx][0].toFixed(6);
+                  const lng = track.latlngs[minIdx][1].toFixed(6);
+
+                  let speed = "--", dir = "--";
+                  if (minIdx > 0 && track.times && track.times[minIdx] && track.times[minIdx-1]) {
+                    const distMeters = map.distance(L.latLng(track.latlngs[minIdx-1]), L.latLng(track.latlngs[minIdx]));
+                    const dt = (new Date(track.times[minIdx]) - new Date(track.times[minIdx-1])) / 1000;
+                    if (dt > 0) {
+                      speed = ((distMeters / dt) * 1.94384).toFixed(1);
+                    }
+                    const dy = track.latlngs[minIdx][0] - track.latlngs[minIdx-1][0];
+                    const dx = track.latlngs[minIdx][1] - track.latlngs[minIdx-1][1];
+                    dir = Math.atan2(dx, dy) * 180 / Math.PI;
+                    dir = (dir + 360) % 360;
+                    dir = dir.toFixed(0) + "°";
+                  }
+
+                  let sinceStart = "--";
+                  if (track.times && track.times[minIdx] && track.times[0]) {
+                    const diffSec = Math.round((new Date(track.times[minIdx]) - new Date(track.times[0])) / 1000);
+                    const h = Math.floor(diffSec / 3600);
+                    const m = Math.floor((diffSec % 3600) / 60);
+                    const s = diffSec % 60;
+                    if (h > 0) {
+                      sinceStart = `${h} h ${m} min`;
+                    } else if (m > 0) {
+                      sinceStart = `${m} min ${s} s`;
+                    } else {
+                      sinceStart = `${s} s`;
+                    }
+                  }
+
+                  L.popup()
+                    .setLatLng(e.latlng)
+                    .setContent(
+                      `<b style="color:#00bfff;font-size:1.1em;">${track.name || "Track"}</b><br>
+                      <b>UTC:</b> ${utc}<br>
+                      <b>Since start:</b> ${sinceStart}<br>
+                      <b>Speed:</b> ${speed} kt<br>
+                      <b>Direction:</b> ${dir}<br>
+                      <b>Lat:</b> <span id="lat-val">${lat}</span>
+                      <button id="copy-lat-btn" style="margin-left:6px;padding:1px 8px;border-radius:6px;border:none;background:#333;color:#ffe066;cursor:pointer;">Copy</button><br>
+                      <b>Lon:</b> <span id="lon-val">${lng}</span>
+                      <button id="copy-lon-btn" style="margin-left:6px;padding:1px 8px;border-radius:6px;border:none;background:#333;color:#ffe066;cursor:pointer;">Copy</button><br>
+                      <button id="copy-coord-btn" style="margin-top:6px;padding:2px 10px;border-radius:6px;border:none;background:#333;color:#ffe066;cursor:pointer;">Copy lat,lon</button>`
+                    )
+                    .openOn(map);
+
+                  setTimeout(() => {
+                    const btnLat = document.getElementById('copy-lat-btn');
+                    const btnLon = document.getElementById('copy-lon-btn');
+                    const btnCoord = document.getElementById('copy-coord-btn');
+                    if (btnLat) {
+                      btnLat.onclick = function() {
+                        if (navigator.clipboard) {
+                          navigator.clipboard.writeText(lat).then(() => {
+                            btnLat.textContent = "Copied!";
+                            setTimeout(() => btnLat.textContent = "Copy", 1200);
+                          });
+                        } else {
+                          window.prompt("Copy latitude:", lat);
+                        }
+                      };
+                    }
+                    if (btnLon) {
+                      btnLon.onclick = function() {
+                        if (navigator.clipboard) {
+                          navigator.clipboard.writeText(lng).then(() => {
+                            btnLon.textContent = "Copied!";
+                            setTimeout(() => btnLon.textContent = "Copy", 1200);
+                          });
+                        } else {
+                          window.prompt("Copy longitude:", lng);
+                        }
+                      };
+                    }
+                    if (btnCoord) {
+                      btnCoord.onclick = function() {
+                        const coordText = `${lat}, ${lng}`;
+                        if (navigator.clipboard) {
+                          navigator.clipboard.writeText(coordText).then(() => {
+                            btnCoord.textContent = "Copied!";
+                            setTimeout(() => btnCoord.textContent = "Copy lat,lon", 1200);
+                          });
+                        } else {
+                          window.prompt("Copy coordinates:", coordText);
+                        }
+                      };
+                    }
+                  }, 100);
+                }
+              });
+
+              trajLayers.push(poly);
+              trajSelected.push(true);
+              const times = track.times ? track.times.map(t => t ? new Date(t) : null) : [];
+              const elevations = Array.isArray(track.elevations) ? track.elevations : [];
+              trajTrackData.push({latlngs: track.latlngs, times: times, color: track.color, name: track.name, elevations: elevations, fileName: track.fileName});
+
+              // Checkbox für Sichtbarkeit
+              const label = document.createElement('label');
+              label.className = 'traj-label';
+              label.style.cursor = "pointer";
+
+              let maxAlt = null;
+              if (elevations && elevations.length > 0) {
+                const validElevations = elevations.filter(e => e !== null && !isNaN(e) && e !== undefined);
+                if (validElevations.length > 0) {
+                  maxAlt = Math.max(...validElevations);
+                }
+              }
+              let heightText = (maxAlt !== null && isFinite(maxAlt)) ? `max ${maxAlt.toFixed(0)} m` : '';
+
+              label.innerHTML = `
+                <input type="checkbox" class="traj-checkbox" checked style="accent-color:${track.color || "#00bfff"};margin-right:6px;">
+                <span class="traj-color" style="background:${track.color || "#00bfff"}"></span>
+                <span>${track.name || "Track"}</span>
+                <span style="color:#ffe066;font-size:0.96em;margin-left:8px;">
+                  ${heightText}
+                </span>
+              `;
+              const idx = trajLayers.length - 1;
+              label.querySelector('input').addEventListener('change', function() {
+                trajSelected[idx] = this.checked;
+                if (this.checked) {
+                  trajLayers[idx].addTo(map);
+                } else {
+                  map.removeLayer(trajLayers[idx]);
+                }
+                updateAllHourAndTimeMarkers();
+              });
+              document.getElementById('trajektorie-list').appendChild(label);
+            });
+            updateAllHourAndTimeMarkers();
+          }
+          // Map-Zoom und Center (jetzt sicher am Ende!)
+          if (data.mapZoom && data.mapCenter) {
+            map.setView([data.mapCenter.lat, data.mapCenter.lng], data.mapZoom);
+          }
+          // Dateinamen nur anzeigen (nicht mehr automatisch laden!)
+          if (Array.isArray(data.loadedFiles) && data.loadedFiles.length > 0) {
+            loadedFileNames = data.loadedFiles;
+            const fileListDiv = document.getElementById("trajektorie-filelist");
+            if (fileListDiv) {
+              updateFileList();
+            }
+          }
+          // Select zurücksetzen
+          this.value = '';
+          this.style.display = 'none';
+        })
+        .catch(err => {
+          alert("Fehler beim Laden der Datei: " + err);
+        });
+    });
+
+    // --- NEU: Bodenhöhe beim Rechtsklick anzeigen ---
+    map.on('contextmenu', function(e) {
+      e.originalEvent.preventDefault(); // Standard-Kontextmenü verhindern
+      fetchGroundElevation(e.latlng.lat, e.latlng.lng, function(elevation) {
+        const elevationText = elevation !== null ? `${elevation.toFixed(1)} m` : '-- m';
+        L.popup()
+          .setLatLng(e.latlng)
+          .setContent(`<b>Ground Elevation:</b> ${elevationText}`)
+          .openOn(map);
+      });
+    });
+
+    // Toggle Button für Trajektorien-Menü
+    document.getElementById('traj-toggle-btn').addEventListener('click', function() {
+      const menu = document.getElementById('trajektorie-controls');
+      menu.classList.toggle('collapsed');
+    });
+  </script>
+</body>
+</html>

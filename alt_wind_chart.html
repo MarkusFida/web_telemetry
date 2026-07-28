@@ -1,0 +1,249 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Altitude/Wind Profile</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { background: #1a1a1a; color: #fff; font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    .navbar { background: #222; padding: 10px; text-align: left; }
+    a { color: #ffe066; text-decoration: none; margin: 0 8px; font-size: 0.95em; }
+    a:hover { color: #ffdd00; }
+    h1 { text-align: center; color: #ffe066; margin: 20px 0 10px; }
+    .status { text-align: center; color: #aaa; font-size: 0.9em; }
+    .controls { text-align: center; margin: 15px 0; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    select, button { padding: 6px 10px; border-radius: 4px; border: 1px solid #555; background: #222; color: #ffe066; cursor: pointer; font-size: 0.9em; }
+    button.active { background: #ffe066; color: #222; font-weight: bold; }
+    button:hover { background: #ffdd00; }
+    .table-wrapper { display: flex; justify-content: center; margin: 20px; }
+    table { border-collapse: collapse; background: #222; font-size: 0.95em; }
+    th, td { padding: 8px 10px; border: 1px solid #444; text-align: center; }
+    th { background: #333; color: #ffe066; position: sticky; top: 0; }
+    tr:nth-child(even) td { background: #282828; }
+    .age-green { background: #0a4400; color: #00ff00; }
+    .age-yellow { background: #444400; color: #ffdd00; }
+    .age-orange { background: #664400; color: #ffaa00; }
+    .age-red { background: #660000; color: #ff5555; }
+    .no-data { text-align: center; color: #ff6666; padding: 40px; font-size: 1.1em; }
+    a.gps { color: #00eaff; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <a href="live.html">Live</a>
+    <a href="chart_1.html">Chart</a>
+    <a href="alt_wind_chart.html">Alt/Wind</a>
+    <a href="ballast_drop.html">Drops</a>
+    <a href="map.html">Map</a>
+    <a href="csv.html">CSV</a>
+  </div>
+  <h1>Altitude/Wind Profile</h1>
+  <div class="status">Update: <span id="lastUpdate">--:--:--</span> UTC | <span id="dataCount">-</span> altitudes</div>
+  <div class="controls">
+    <label>Sort: <select id="sort">
+      <option value="alt">Altitude</option>
+      <option value="time">Time</option>
+      <option value="age">Age</option>
+    </select></label>
+    <button id="asc" class="active">⬆ Asc</button>
+    <button id="desc">⬇ Desc</button>
+    <label>Step: <select id="step">
+      <option value="50">50ft</option>
+      <option value="100" selected>100ft</option>
+      <option value="200">200ft</option>
+    </select></label>
+    <label>Hours: <select id="hours">
+      <option value="1">1h</option>
+      <option value="2" selected>2h</option>
+      <option value="4">4h</option>
+      <option value="12">12h</option>
+    </select></label>
+    <button id="refresh">🔄 Refresh</button>
+  </div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Alt (ft)</th>
+          <th>Alt (m)</th>
+          <th>Course (°)</th>
+          <th>Arrow</th>
+          <th>Speed (kts)</th>
+          <th>Vario (m/s)</th>
+          <th>Temp (°C)</th>
+          <th>Humid (%)</th>
+          <th>Time (UTC)</th>
+          <th>Age</th>
+          <th>GPS</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="11" class="no-data">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    let altData = {}; // Stores all altitude history
+    let sortBy = 'alt', ascending = true, altStep = 100, hoursBack = 2;
+
+    document.getElementById('sort').addEventListener('change', e => { sortBy = e.target.value; render(); });
+    document.getElementById('asc').addEventListener('click', () => { ascending = true; document.getElementById('asc').classList.add('active'); document.getElementById('desc').classList.remove('active'); render(); });
+    document.getElementById('desc').addEventListener('click', () => { ascending = false; document.getElementById('desc').classList.add('active'); document.getElementById('asc').classList.remove('active'); render(); });
+    document.getElementById('step').addEventListener('change', e => { altStep = parseInt(e.target.value); load(); });
+    document.getElementById('hours').addEventListener('change', e => { hoursBack = parseInt(e.target.value); load(); });
+    document.getElementById('refresh').addEventListener('click', load);
+
+    function load() {
+      fetch(`vario_chart.php?hours=${hoursBack}`)
+        .then(r => r.json())
+        .then(rows => {
+          console.log('Received rows:', rows.length, 'First row:', rows[0]);
+          
+          if (!Array.isArray(rows)) {
+            console.error('Not array! Type:', typeof rows);
+            render();
+            return;
+          }
+          if (rows.length === 0) {
+            console.warn('⚠️ No rows from vario_chart.php');
+            render();
+            return;
+          }
+          
+          // Merge with existing history (don't clear!)
+          rows.forEach((row, idx) => {
+            // Very permissive: just check baro_alt exists and is a number
+            if (!row || typeof row.baro_alt !== 'number') {
+              console.warn('Row', idx, 'rejected - no baro_alt:', row);
+              return;
+            }
+            
+            const alt = Math.round(row.baro_alt / altStep) * altStep;
+            if (!altData[alt]) {
+              altData[alt] = [];
+            }
+            altData[alt].push(row);
+          });
+          
+          console.log('altData altitudes:', Object.keys(altData).length, 'Altitudes:', Object.keys(altData));
+          console.log('Total rows in altData:', Object.values(altData).reduce((sum, arr) => sum + arr.length, 0));
+          
+          // Remove duplicates by gps_time
+          for (const alt in altData) {
+            let unique = {};
+            altData[alt].forEach(row => {
+              const key = String(row.gps_time || row.ts || row.datetime || Math.random());
+              unique[key] = row;
+            });
+            altData[alt] = Object.values(unique);
+            console.log(`Alt ${alt}: ${altData[alt].length} rows after dedup`);
+          }
+          
+          render();
+        })
+        .catch(e => {
+          console.error('Fetch error:', e);
+          document.getElementById('tbody').innerHTML = `<tr><td colspan="11" class="no-data">Error: ${e.message}</td></tr>`;
+        });
+    }
+
+    function getAgeMinutes(time) {
+      if (!time) return null;
+      try {
+        const t = new Date(time.replace(' ', 'T') + 'Z');
+        const now = new Date();
+        return Math.round((now - t) / 60000);
+      } catch {
+        return null;
+      }
+    }
+
+    function formatAge(min) {
+      if (min === null || min === undefined) return '--';
+      if (min < 1) return '< 1m';
+      if (min < 60) return min + 'm';
+      const h = Math.floor(min / 60);
+      const m = min % 60;
+      return h + 'h ' + m + 'm';
+    }
+
+    function getAgeClass(age) {
+      if (age === null) return '';
+      if (age < 1) return 'age-green';
+      if (age < 2) return 'age-yellow';
+      if (age < 5) return 'age-orange';
+      return 'age-red';
+    }
+
+    function render() {
+      const now = new Date();
+      const h = String(now.getUTCHours()).padStart(2, '0');
+      const m = String(now.getUTCMinutes()).padStart(2, '0');
+      const s = String(now.getUTCSeconds()).padStart(2, '0');
+      document.getElementById('lastUpdate').textContent = h + ':' + m + ':' + s;
+
+      let rows = [];
+      for (const altStr in altData) {
+        const recs = altData[altStr];
+        if (recs.length === 0) continue;
+        const last = recs[recs.length - 1];
+        const timeStr = last.gps_time || last.ts || last.datetime || '--';
+        const age = getAgeMinutes(timeStr);
+        
+        const lat = last.lat, lon = last.lon;
+        let gps = '--';
+        if (lat && lon) {
+          const latStr = Number(lat).toFixed(6);
+          const lonStr = Number(lon).toFixed(6);
+          gps = `<a class="gps" href="https://maps.google.com/?q=${latStr},${lonStr}" target="_blank">${latStr}, ${lonStr}</a>`;
+        }
+
+        rows.push({
+          alt: Number(altStr),
+          alt_m: Math.round(Number(altStr) * 0.3048),
+          track: last.track != null ? Math.round(last.track) : '--',
+          arrow: `<span style="color: #00eaff; font-size: 1.2em;">⬆</span>`,
+          speed: last.speed != null ? Number(last.speed).toFixed(1) : '--',
+          vario: last.vario != null ? Number(last.vario).toFixed(2) : '--',
+          temp: last.temp != null ? Number(last.temp).toFixed(1) : '--',
+          humid: last.humidity != null ? Number(last.humidity).toFixed(1) : '--',
+          time: timeStr,
+          age: age,
+          ageStr: formatAge(age),
+          ageClass: getAgeClass(age),
+          gps: gps
+        });
+      }
+
+      // Sort
+      rows.sort((a, b) => {
+        let va, vb;
+        if (sortBy === 'alt') { va = a.alt; vb = b.alt; }
+        else if (sortBy === 'time') { va = a.time; vb = b.time; }
+        else if (sortBy === 'age') { va = a.age === null ? 9999 : a.age; vb = b.age === null ? 9999 : b.age; }
+        if (typeof va === 'string') return ascending ? va.localeCompare(vb) : vb.localeCompare(va);
+        return ascending ? va - vb : vb - va;
+      });
+
+      // Render
+      const tb = document.getElementById('tbody');
+      tb.innerHTML = '';
+      if (rows.length === 0) {
+        tb.innerHTML = `<tr><td colspan="11" class="no-data">No data in history</td></tr>`;
+        document.getElementById('dataCount').textContent = '0';
+        return;
+      }
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.alt}</td><td>${r.alt_m}</td><td>${r.track}°</td><td>${r.arrow}</td><td>${r.speed}</td><td>${r.vario}</td><td>${r.temp}</td><td>${r.humid}</td><td>${r.time}</td><td class="${r.ageClass}">${r.ageStr}</td><td>${r.gps}</td>`;
+        tb.appendChild(tr);
+      });
+      document.getElementById('dataCount').textContent = rows.length;
+    }
+
+    load();
+    setInterval(load, 10000);
+  </script>
+</body>
+</html>

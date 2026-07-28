@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CSV Chart</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    html, body { height: 100%; margin: 0; padding: 0; }
+    body { font-family: sans-serif; margin: 0; background-color: black; color: white; height: 100vh; }
+    #header { margin: 20px 0 12px 20px; }
+    #chart-container { width: 100%; max-width: 1200px; height: 600px; position: relative; margin: 0 auto; background: black; }
+    #controls { margin: 20px 0 10px 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .meta { font-size: 1.1em; margin-bottom: 6px; }
+    .ground { color: #00e0ff; }
+    .checkbox-group { display: flex; flex-wrap: wrap; gap: 10px; }
+    .field-container { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+    .field-container input[type="color"] { width: 30px; height: 30px; border: none; cursor: pointer; }
+    .field-container label { color: white; cursor: pointer; }
+    #fullscreen-btn { padding: 5px 10px; background: #333; color: white; border: none; cursor: pointer; }
+    #fullscreen-btn:hover { background: #555; }
+    .tooltip-custom { position: absolute; background: rgba(0,0,0,0.98); color: #fff; padding: 14px; border-radius: 8px; pointer-events: none; display: none; z-index: 1000; font-size: 1.15em; border: 2.5px solid #fff; min-width: 220px; }
+    #filename { margin-left: 20px; font-size: 1.1em; color: #ff0; }
+    .fullscreen-hide { display: block; }
+    .fullscreen #header,
+    .fullscreen #controls,
+    .fullscreen #filename,
+    .fullscreen h2 {
+      display: none !important;
+    }
+    .fullscreen #chart-container {
+      max-width: none !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      background: black;
+    }
+    .fullscreen #csvchart {
+      width: 100vw !important;
+      height: 100vh !important;
+    }
+    #top-nav {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 600;
+      margin: 18px 0 0 30px;
+      display: flex;
+      gap: 18px;
+    }
+    #top-nav a {
+      color: #ffe066;
+      font-size: 1.15em;
+      text-decoration: none;
+      background: #333;
+      padding: 5px 14px;
+      border-radius: 8px;
+    }
+    #top-nav a:hover {
+      background: #555;
+    }
+    h2 {
+      margin-top: 60px;
+      margin-left: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="top-nav">
+    <a href="live.html" target="_blank">Live data</a>
+    <a href="chart_1.html" target="_blank">chart</a>
+    <a href="alt_wind_chart.html" target="_blank">Alt/Wind data</a>
+    <a href="ballast_drop.html" target="_blank">Ballast Drop Times</a>
+    <a href="map.html" target="_blank">map</a>
+    <a href="csv.html" target="_blank">csv chart</a>
+  </div>
+  <h2>CSV Chart</h2>
+  <input type="file" id="csvfile" accept=".csv,.txt" style="margin-left:20px;">
+  <span id="filename"></span>
+  <div id="header"></div>
+  <div id="controls" style="display:none;">
+    <button id="fullscreen-btn">Fullscreen</button>
+    <div class="checkbox-group" id="checkboxes"></div>
+  </div>
+  <div id="chart-container">
+    <canvas id="csvchart" width="1200" height="600"></canvas>
+    <div id="tooltip" class="tooltip-custom"></div>
+  </div>
+  <script>
+    let chart, csvData, groundElevation = null, metaLine = "", headers = [], lines = [], aglKey = null;
+    let selectedFields = [];
+
+    // Farben aus localStorage laden oder Standardfarben verwenden
+    let fieldColors = JSON.parse(localStorage.getItem('csvFieldColors')) || {
+        'Pressure (mb)': '#00ffff',
+        'Pressure (Pa)': '#00b4ff',
+        'Temperature (C)': '#ffff00',
+        'Relative humidity (%)': '#00ff80',
+        'Wind speed (m/s)': '#ff00ff',
+        'Wind speed (kt)': '#ff0080',
+        'Wind speed (km/h)': '#ff8000',
+        'Wind direction (true deg)': '#ff8c00',
+        'Wind heading (true deg)': '#80ff00',
+        'Wind heading (magnetic deg)': '#ff0000',
+        'Altitude (m MSL)': '#00ffff',
+        'Altitude (ft MSL)': '#0080ff',
+        'Height (m AGL)': '#00ff80',
+        'Height (ft AGL)': '#ffff80',
+        'Latitude': '#00ffff',
+        'Longitude': '#00ffff'
+    };
+
+    // Funktion zum Speichern der Farben
+    function saveColors() {
+        localStorage.setItem('csvFieldColors', JSON.stringify(fieldColors));
+    }
+
+    // Funktion zum Aktualisieren der Farbe eines Feldes
+    function updateFieldColor(fieldName, color) {
+        fieldColors[fieldName] = color;
+        saveColors();
+        updateChart();
+    }
+
+    // Hilfsfunktion: Hex zu RGBA konvertieren
+    function hexToRgba(hex) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, 1)`;
+    }
+
+    const units = {
+        'Pressure (mb)': 'mb',
+        'Pressure (Pa)': 'Pa',
+        'Temperature (C)': '°C',
+        'Relative humidity (%)': '%',
+        'Wind speed (m/s)': 'm/s',
+        'Wind speed (kt)': 'kt',
+        'Wind speed (km/h)': 'km/h',
+        'Wind direction (true deg)': '°',
+        'Wind heading (true deg)': '°',
+        'Wind heading (magnetic deg)': '°',
+        'Altitude (m MSL)': 'm',
+        'Altitude (ft MSL)': 'ft',
+        'Height (m AGL)': 'm',
+        'Height (ft AGL)': 'ft',
+        'Latitude': '',
+        'Longitude': ''
+    };
+
+    // Felder, die beim Laden automatisch ausgewählt werden sollen
+    const autoSelectFields = [
+        "Temperature (C)",
+        "Wind speed (m/s)",
+        "Wind direction (true deg)"
+    ];
+
+    // Plugin für horizontale Linie und Tooltip (zeigt alle Werte der Zeile)
+    const horizontalLinePlugin = {
+        id: 'horizontalLine',
+        afterEvent: (chart, args) => {
+        const { event } = args;
+        if (event.type === 'mousemove') {
+            chart.horizontalLine = event.y;
+            chart.mouseEvent = event;
+            chart.draw();
+        }
+        if (event.type === 'mouseout') {
+            chart.horizontalLine = undefined;
+            chart.mouseEvent = undefined;
+            chart.draw();
+            document.getElementById('tooltip').style.display = 'none';
+        }
+        },
+        afterDraw: (chart) => {
+        if (chart.horizontalLine !== undefined && chart.mouseEvent) {
+            const { ctx, chartArea: { left, right, top, bottom } } = chart;
+            if (chart.horizontalLine < top || chart.horizontalLine > bottom) return;
+            ctx.save();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(left, chart.horizontalLine);
+            ctx.lineTo(right, chart.horizontalLine);
+            ctx.stroke();
+            ctx.restore();
+
+            // Finde den Index des Datenpunkts, der der Maus-Y am nächsten ist (Y-Achse AMSL)
+            const yScale = chart.scales.y;
+            let minDist = Infinity, nearestIdx = -1;
+            for (let i = 0; i < csvData.length; i++) {
+                const yVal = csvData[i]["Altitude (m MSL)"];
+                if (yVal === null || isNaN(yVal)) continue;
+                const yPx = yScale.getPixelForValue(yVal);
+                const dist = Math.abs(chart.horizontalLine - yPx);
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearestIdx = i;
+                }
+            }
+            // Zeige Tooltip für diesen Index
+            if (nearestIdx !== -1) {
+                const row = csvData[nearestIdx];
+                const amsl = row["Altitude (m MSL)"];
+                const agl = row[aglKey]; // Direkt aus der ursprünglichen Spalte
+                let amslText = '';
+                if (agl !== null && groundElevation !== null) {
+                    amslText = ` (${agl} + ${groundElevation})`;
+                }
+                let content = '<b>Daten:</b><br>';
+                content += `<span style="color:#00e0ff">Altitude (m MSL)</span>: <span style="color:#fff">${amsl !== null ? amsl : 'N/A'} m</span>`;
+                content += ` | <span style="color:#ff0">Height (m AGL)</span>: <span style="color:#fff">${agl !== null ? agl : 'N/A'} m</span><br>`;
+                if (row["UTC time"]) content += `<span style="color:#ff0">UTC time</span>: <span style="color:#fff">${row["UTC time"]}</span><br>`;
+                if (row["Local time"]) content += `<span style="color:#ff0">Local time</span>: <span style="color:#fff">${row["Local time"]}</span><br>`;
+                (selectedFields.length ? selectedFields : headers).forEach(h => {
+                    if (h === "Height (m AMSL)" || h === "Height (m AGL)" || h === "Altitude (m MSL)" || h === "Altitude (ft MSL)" || h === "Height (ft AGL)" || h === "UTC time" || h === "Local time" || h === "Latitude" || h === "Longitude") return;
+                    let val = row[h];
+                    let unit = units[h] ? ` ${units[h]}` : '';
+                    content += `<span style="color:#00e0ff">${h}</span>: <span style="color:#fff">${val !== null && val !== undefined ? val : 'N/A'}${unit}</span><br>`;
+                });
+                const tooltipEl = document.getElementById('tooltip');
+                tooltipEl.innerHTML = content;
+                tooltipEl.style.display = 'block';
+                // Tooltip-Positionierung
+                let leftPx = right - 350;
+                let topPx = chart.horizontalLine + 10;
+                if (topPx + 250 > window.innerHeight) topPx = chart.horizontalLine - 250;
+                tooltipEl.style.left = leftPx + 'px';
+                tooltipEl.style.top = topPx + 'px';
+            } else {
+                document.getElementById('tooltip').style.display = 'none';
+            }
+        }
+        }
+    };
+
+    document.getElementById('csvfile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        document.getElementById('filename').textContent = file.name;
+        const reader = new FileReader();
+        reader.onload = async function(evt) {
+        lines = evt.target.result.split(/\r?\n/).filter(l => l.trim().length > 0);
+        if (lines.length < 3) return alert("Zu wenig Daten!");
+        metaLine = lines[0];
+        const meta = parseMeta(metaLine);
+        // Parse CSV Header zuerst
+        headers = lines[1].split('\t').map(h => h.trim()); // Tab als Trenner!
+        console.log('Raw headers from CSV:', headers);
+        
+    // Hole GPS-Koordinaten aus erster Datenzeile
+    const firstDataLine = lines[2];
+    const firstDataValues = firstDataLine.split('\t');
+
+        // Immer Spalte F (Index 5) für Latitude und Spalte G (Index 6) für Longitude verwenden
+        function fixDoubleDot(val) {
+            // Wandelt z.B. '46.422.170' in '46.422170' um
+            if ((val.match(/\./g) || []).length > 1) {
+                const parts = val.split('.');
+                return parts[0] + '.' + parts.slice(1).join('');
+            }
+            return val;
+        }
+        let lat = parseFloat(fixDoubleDot(firstDataValues[5]));
+        let lon = parseFloat(fixDoubleDot(firstDataValues[6]));
+        console.log('GPS aus festen Spalten F/G - Lat:', lat, 'Lon:', lon);
+        
+        // Validierung: Prüfe auf plausible GPS-Koordinaten
+        const isValidGPS = (lat, lon) => {
+            return !isNaN(lat) && !isNaN(lon) && 
+                   lat >= -90 && lat <= 90 && 
+                   lon >= -180 && lon <= 180;
+        };
+        
+        // Fallback auf Meta-Koordinaten, falls Daten-Koordinaten ungültig
+        if (!isValidGPS(lat, lon)) {
+            console.warn('GPS-Daten in erster Zeile ungültig oder nicht plausible Werte, verwende Meta-Koordinaten');
+            console.log('Meta-Koordinaten - Lat:', meta.lat, 'Lon:', meta.lon);
+            lat = meta.lat;
+            lon = meta.lon;
+        }
+        
+        console.log('Verwendete Koordinaten - Lat:', lat, 'Lon:', lon);
+        
+        document.getElementById('header').innerHTML =
+            `<div class="meta"><b>Radiation correction:</b> ${meta.version || ""} <b>Lat:</b> ${lat} <b>Lon:</b> ${lon} <b>UTC:</b> ${meta.utc_time}</div>`;
+        
+        // Hole Ground Elevation aus den GPS-Koordinaten
+        groundElevation = await getGroundElevation(lat, lon);
+        document.getElementById('header').innerHTML +=
+            `<div class="meta ground"><b>Ground elevation:</b> ${groundElevation !== null ? groundElevation + " m" : "?"}</div>`;
+        
+        // Parse CSV-Daten
+        csvData = lines.slice(2).map(l => {
+            const vals = l.split('\t');
+            let obj = {};
+            headers.forEach((h, i) => {
+                // UTC/Local time als String, Rest als Zahl
+                if (h.includes("time")) {
+                    obj[h] = vals[i] || null;
+                } else {
+                    obj[h] = vals[i] !== undefined && vals[i] !== "" ? parseFloat(vals[i]) : null;
+                }
+            });
+            return obj;
+        });
+        console.log('CSV-Daten geparst, Anzahl Zeilen:', csvData.length);
+        console.log('Beispiel-Datensatz:', csvData[0]);
+
+        // AGL/MSL-Spalten finden
+        const aglKey = headers.find(h => h.toLowerCase().includes('agl')) || headers[0];
+        const mslKey = headers.find(h => h.toLowerCase().includes('msl')) || headers[0];
+
+        // AMSL = Altitude (m MSL), AGL = Height (m AGL)
+        csvData.forEach(row => {
+            row["Height (m AGL)"] = row[aglKey];
+            row["Altitude (m MSL)"] = row[mslKey]; // MSL = AMSL
+        });
+
+        // Checkboxen und Farbauswahler erstellen
+        const checkboxesDiv = document.getElementById('checkboxes');
+        checkboxesDiv.innerHTML = '';
+        headers.forEach(h => {
+            if (h !== "Height (m AGL)" && h !== "Height (m AMSL)" && h !== "Altitude (m MSL)" && h !== "UTC time" && h !== "Local time" && h !== "Latitude" && h !== "Longitude") {
+                const container = document.createElement('div');
+                container.className = 'field-container';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = h;
+
+                const colorPicker = document.createElement('input');
+                colorPicker.type = 'color';
+                colorPicker.value = fieldColors[h] || '#ffffff';
+                colorPicker.addEventListener('change', (e) => {
+                    updateFieldColor(h, e.target.value);
+                });
+
+                const label = document.createElement('label');
+                label.textContent = h;
+                label.style.color = 'white';
+
+                container.appendChild(checkbox);
+                container.appendChild(colorPicker);
+                container.appendChild(label);
+                checkboxesDiv.appendChild(container);
+            }
+        });
+
+        // Automatisch Temperatur, Wind speed und Wind direction auswählen
+        selectedFields = [];
+        console.log('autoSelectFields:', autoSelectFields);
+        document.querySelectorAll('#checkboxes input[type="checkbox"]').forEach(cb => {
+            console.log('Checking checkbox:', cb.value);
+            // Flexibler Vergleich: Prüfe ob der Feldname den autoSelectField enthält
+            const matchingField = autoSelectFields.find(autoField => 
+                cb.value.includes(autoField) || autoField.includes(cb.value.replace(/\s+/g, ' ').trim())
+            );
+            if (matchingField) {
+                cb.checked = true;
+                selectedFields.push(cb.value);
+                console.log('Auto-selected field:', cb.value, 'matched with:', matchingField);
+            } else {
+                cb.checked = false;
+            }
+        });
+        console.log('Final selectedFields:', selectedFields);
+
+        // Event-Listener für Checkboxen
+        document.querySelectorAll('#checkboxes input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', () => {
+            selectedFields = Array.from(document.querySelectorAll('#checkboxes input[type="checkbox"]:checked')).map(x => x.value);
+            updateChart();
+            });
+        });
+
+        // Fullscreen Button
+        document.getElementById('fullscreen-btn').addEventListener('click', () => {
+            document.body.classList.add('fullscreen');
+            document.getElementById('chart-container').requestFullscreen();
+        });
+        // Fullscreen Ende: Layout zurücksetzen
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) {
+            document.body.classList.remove('fullscreen');
+            }
+        });
+
+        // Falls keine der Felder vorhanden ist, wähle das erste Feld
+        if (selectedFields.length === 0) {
+            const firstCheckbox = document.querySelector('#checkboxes input[type="checkbox"]');
+            if (firstCheckbox) {
+                firstCheckbox.checked = true;
+                selectedFields = [firstCheckbox.value];
+                console.log('Fallback: Selected first available field:', firstCheckbox.value);
+            } else {
+                console.log('No checkboxes found!');
+            }
+        }
+
+        document.getElementById('controls').style.display = '';
+        console.log('Controls displayed, calling updateChart');
+        updateChart();
+        };
+        reader.readAsText(file);
+    });
+
+    function updateChart() {
+        console.log('updateChart called');
+        if (!csvData) {
+            console.log('No csvData available');
+            return;
+        }
+        console.log('csvData length:', csvData.length);
+        console.log('selectedFields:', selectedFields);
+        console.log('headers:', headers);
+
+        const ctx = document.getElementById('csvchart').getContext('2d');
+        if (chart) chart.destroy();
+        const datasets = [];
+        const xAxes = [];
+        let xAxisIdCounter = 0;
+        (selectedFields.length ? selectedFields : headers).forEach(field => {
+            console.log('Processing field:', field);
+            if (field === "Height (m AGL)" || field === "Altitude (m MSL)" || field === "Altitude (ft MSL)" || field === "Height (ft AGL)" || field === "UTC time" || field === "Local time" || field === "Latitude" || field === "Longitude") {
+                console.log('Skipping field:', field);
+                return;
+            }
+            const data = csvData.filter(row => row["Altitude (m MSL)"] !== null && row[field] !== null)
+                .map(row => ({ x: row[field], y: row["Altitude (m MSL)"] }));
+            console.log('Data points for', field, ':', data.length);
+            if (data.length > 0) {
+                const color = fieldColors[field] || '#ffffff';
+                const rgbaColor = color.startsWith('#') ? hexToRgba(color) : color;
+                let axisOptions = {
+                    id: 'x' + xAxisIdCounter,
+                    type: 'linear',
+                    position: 'bottom',
+                    title: { display: true, text: field, color: rgbaColor },
+                    ticks: { color: rgbaColor },
+                    grid: { color: 'gray' }
+                };
+                if (field === "Wind direction (true deg)" || field === "Wind heading (true deg)" || field === "Wind heading (magnetic deg)") {
+                    axisOptions.min = 0;
+                    axisOptions.max = 360;
+                }
+                datasets.push({
+                    label: field,
+                    data: data,
+                    borderColor: rgbaColor,
+                    backgroundColor: rgbaColor.replace('1)', '0.1)'),
+                    pointRadius: 3,
+                    showLine: true,
+                    tension: 0,
+                    yAxisID: 'y',
+                    xAxisID: 'x' + xAxisIdCounter
+                });
+                xAxes.push(axisOptions);
+                xAxisIdCounter++;
+            }
+        });
+
+        // AMSL-Werte für min/max
+        const amslVals = csvData.map(row => row["Altitude (m MSL)"]).filter(v => v !== null && !isNaN(v));
+        const minAMSL = Math.min(...amslVals);
+        const maxAMSL = Math.max(...amslVals);
+
+        // AGL-Werte für rechte Achse
+        const aglVals = csvData.map(row => row["Height (m AGL)"]).filter(v => v !== null && !isNaN(v));
+        const minAGL = Math.min(...aglVals);
+        const maxAGL = Math.max(...aglVals);
+
+        chart = new Chart(ctx, {
+        type: 'scatter',
+        data: { datasets: datasets },
+        options: {
+            backgroundColor: 'black',
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+            mode: 'nearest',
+            axis: 'y',
+            intersect: false
+            },
+            scales: {
+            y: { 
+                id: 'y',
+                type: 'linear', 
+                position: 'left', 
+                title: { display: true, text: 'Altitude (m MSL)', color: 'white' },
+                min: groundElevation !== null ? groundElevation : minAMSL,
+                max: maxAMSL,
+                ticks: { color: 'white' },
+                grid: { color: 'gray' }
+            },
+            y2: { 
+                id: 'y2',
+                type: 'linear', 
+                position: 'right', 
+                title: { display: true, text: 'Height (m AGL)', color: 'white' },
+                min: minAGL,
+                max: maxAGL,
+                ticks: { 
+                color: 'white',
+                callback: function(value) { return value; }
+                },
+                grid: { drawOnChartArea: false }
+            },
+            ...Object.fromEntries(xAxes.map(axis => [axis.id, axis]))
+            },
+            plugins: {
+            legend: { display: true, labels: { color: 'white' } },
+            tooltip: { enabled: false }
+            },
+            plugins: [horizontalLinePlugin]
+        }
+        });
+        console.log('Chart created with', datasets.length, 'datasets');
+    }
+
+    function parseMeta(line) {
+        const obj = {};
+        const v = line.match(/v([\d.]+)/); if (v) obj.version = v[1];
+        const lat = line.match(/lat=([-\d.]+)/); if (lat) obj.lat = parseFloat(lat[1]);
+        const lon = line.match(/lon=([-\d.]+)/); if (lon) obj.lon = parseFloat(lon[1]);
+        const utc = line.match(/utc_time=([^\t]+)/); if (utc) obj.utc_time = utc[1];
+        return obj;
+    }
+
+    async function getGroundElevation(lat, lon) {
+        try {
+        const resp = await fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lon}`);
+        const data = await resp.json();
+        return Math.round(data.results[0].elevation);
+        } catch (e) {
+        return null;
+        }
+    }
+  </script>
+</body>
+</html>

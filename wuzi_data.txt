@@ -1,0 +1,17 @@
+qnh=1013
+alt_ft=1506
+alt_m=459
+gps_alt=503
+gps_lat=48.788905
+gps_lng=14.993086
+gps_course=
+gps_speed=0.2
+gps_sats=13
+peak=1508
+valley=1508
+vario=-0.0
+temp=24.7
+humidity=52.8
+ballast_drop=
+ballast_drop_count=88
+gps_time=17:34:52

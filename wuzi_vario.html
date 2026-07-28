@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wuzi Vario Welcome</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <style>
+    body { background: #181818; color: #fff; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden;}
+    .container { max-width: 1200px; margin: 0 auto; position: relative; z-index: 2; }
+    .links-bar {
+      margin-bottom:32px;
+      display:flex;
+      gap:32px; /* viel größerer Abstand */
+      position:relative;
+      z-index:3;
+      justify-content: center;
+      align-items: center;
+    }
+    .links-bar a {
+      color:#ffe066;
+      font-size:2.2em; /* viel größer */
+      text-decoration:none;
+      background:#333;
+      padding:18px 38px; /* viel größer */
+      border-radius:16px;
+      transition: background 0.2s, color 0.2s, transform 0.2s;
+      box-shadow: 0 4px 18px #0007;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+    .links-bar a:hover {
+      background: #ffe066;
+      color: #222;
+      transform: scale(1.08);
+    }
+    .greeting {
+      text-align: center;
+      margin-top: 80px;
+      font-size: 2.8em;
+      color: #ffe066;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      letter-spacing: 2px;
+      text-shadow: 0 4px 24px #000, 0 1px 0 #fff2;
+      z-index: 2;
+      position: relative;
+    }
+    .subtitle {
+      text-align: center;
+      font-size: 1.5em;
+      color: #fff;
+      margin-top: 18px;
+      margin-bottom: 60px;
+      opacity: 0.85;
+      z-index: 2;
+      position: relative;
+    }
+    #balloon-area {
+      position: fixed;
+      left: 0; bottom: 0; width: 100vw; height: 100vh;
+      pointer-events: none;
+      z-index: 1;
+      overflow: visible;
+    }
+    .svg-balloon {
+      position: absolute;
+      width: 90px;
+      height: 160px;
+      opacity: 0.93;
+      will-change: transform;
+      z-index: 1;
+      bottom: -170px;
+    }
+    .svg-balloon:nth-child(1) { left: 10vw; animation: floatSvgUp 13s linear infinite; animation-delay: 0s;}
+    .svg-balloon:nth-child(2) { left: 25vw; animation: floatSvgUp 14s linear infinite; animation-delay: 2s;}
+    .svg-balloon:nth-child(3) { left: 40vw; animation: floatSvgUp 12s linear infinite; animation-delay: 1s;}
+    .svg-balloon:nth-child(4) { left: 60vw; animation: floatSvgUp 15s linear infinite; animation-delay: 3s;}
+    .svg-balloon:nth-child(5) { left: 75vw; animation: floatSvgUp 13.5s linear infinite; animation-delay: 1.5s;}
+    .svg-balloon:nth-child(6) { left: 88vw; animation: floatSvgUp 14.5s linear infinite; animation-delay: 2.5s;}
+    @keyframes floatSvgUp {
+      0%   { transform: translateY(0) scale(1) rotate(-2deg);}
+      10%  { transform: translateY(-30px) scale(1.03) rotate(2deg);}
+      20%  { transform: translateY(-60px) scale(1.01) rotate(-2deg);}
+      30%  { transform: translateY(-90px) scale(1.04) rotate(2deg);}
+      40%  { transform: translateY(-120px) scale(1.01) rotate(-2deg);}
+      50%  { transform: translateY(-150px) scale(1.05) rotate(2deg);}
+      60%  { transform: translateY(-180px) scale(1.01) rotate(-2deg);}
+      70%  { transform: translateY(-210px) scale(1.04) rotate(2deg);}
+      80%  { transform: translateY(-240px) scale(1.01) rotate(-2deg);}
+      90%  { transform: translateY(-270px) scale(1.03) rotate(2deg);}
+      100% { transform: translateY(-110vh) scale(1) rotate(-2deg);}
+    }
+    .container, .links-bar, .greeting, .subtitle { position: relative; z-index: 2; }
+    #balloon-area { z-index: 1; }
+    @media (max-width: 900px) {
+      .links-bar { flex-direction: column; gap: 18px; }
+      .links-bar a { font-size: 1.3em; padding: 10px 18px; }
+    }
+    @media (max-width: 700px) {
+      .greeting { font-size: 2em; }
+      .subtitle { font-size: 1.1em; }
+      .svg-balloon { width: 55px; height: 90px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="links-bar">
+      <a href="live.html" target="_blank">Live data</a>
+      <a href="chart_1.html" target="_blank">Chart</a>
+      <a href="alt_wind_chart.html" target="_blank">Alt/Wind data</a>
+      <a href="ballast_drop.html" target="_blank">Ballast Drop Times</a>
+      <a href="map.html" target="_blank">Map</a>
+      <a href="csv.html" target="_blank">csv chart</a>
+      <a href="cahsing_car.html" target="_blank">chasing car</a>
+    </div>
+    <div class="greeting">
+      Welcome to Wuzi Vario!
+    </div>
+    <div class="subtitle">
+      <span style="font-size:1.2em;">Your smart balloon flight companion</span><br>
+      <span style="font-size:0.9em;opacity:0.7;">Live data, maps, weather and more</span>
+    </div>
+  </div>
+  <!-- Animated Montgolfiere-style Balloons (SVG) -->
+  <div id="balloon-area">
+    <svg class="svg-balloon" viewBox="0 0 90 160">
+      <ellipse cx="45" cy="60" rx="40" ry="55" fill="#ffe066" stroke="#bfa100" stroke-width="4"/>
+      <ellipse cx="45" cy="60" rx="32" ry="45" fill="none" stroke="#ff5e5e" stroke-width="6" opacity="0.5"/>
+      <path d="M45,5 Q55,60 45,115" stroke="#ff5e5e" stroke-width="4" fill="none"/>
+      <path d="M45,5 Q35,60 45,115" stroke="#ff5e5e" stroke-width="4" fill="none"/>
+      <line x1="35" y1="110" x2="38" y2="140" stroke="#b97f3a" stroke-width="3"/>
+      <line x1="55" y1="110" x2="52" y2="140" stroke="#b97f3a" stroke-width="3"/>
+      <rect x="38" y="140" width="14" height="14" rx="3" fill="#b97f3a" stroke="#fff" stroke-width="2"/>
+    </svg>
+    <svg class="svg-balloon" viewBox="0 0 90 160">
+      <ellipse cx="45" cy="60" rx="40" ry="55" fill="#5ebaff" stroke="#005fa1" stroke-width="4"/>
+      <ellipse cx="45" cy="60" rx="32" ry="45" fill="none" stroke="#ffe066" stroke-width="6" opacity="0.5"/>
+      <path d="M45,5 Q55,60 45,115" stroke="#ffe066" stroke-width="4" fill="none"/>
+      <path d="M45,5 Q35,60 45,115" stroke="#ffe066" stroke-width="4" fill="none"/>
+      <line x1="35" y1="110" x2="38" y2="140" stroke="#b97f3a" stroke-width="3"/>
+      <line x1="55" y1="110" x2="52" y2="140" stroke="#b97f3a" stroke-width="3"/>
+      <rect x="38" y="140" width="14" height="14" rx="3" fill="#b97f3a" stroke="#fff" stroke-width="2"/>
+    </svg>
+    <svg class="svg-balloon" viewBox="0 0 90 160">
+      <ellipse cx="45" cy="60" rx="40" ry="55" fill="#ff5e5e" stroke="#a10000" stroke-width="4"/>
+      <ellipse cx="45" cy="60" rx="32" ry="45" fill="none" stroke="#ffe066" stroke-width="6" opacity="0.5"/>
+      <path d="M45,5 Q55,60 45,115" stroke="#ffe066" stroke-width="4" fill="none"/>
+      <path d="M45,5 Q35,60 45,115" stroke="#ffe066" stroke-width="4" fill="none"/>
+      <line x1="35" y1="110" x2="38" y2="140" stroke="#b97f3a" stroke-width="3"/>
+      <line x1="55" y1="110" x2="52" y2="140" stroke="#b97f3a" stroke-width="3"/>
+      <rect x="38" y="140" width="14" height="14" rx="3" fill="#b97f3a" stroke="#fff" stroke-width="2"/>
+    </svg>
+    <svg class="svg-balloon" viewBox="0 0 90 160">
+      <ellipse cx="45" cy="60" rx="40" ry="55" fill="#7fff7f" stroke="#1a7f1a" stroke-width="4"/>
+      <ellipse cx="45" cy="60" rx="32" ry="45" fill="none" stroke="#ff5e5e" stroke-width="6" opacity="0.5"/>
+      <path d="M45,5 Q55,60 45,115" stroke="#ff5e5e" stroke-width="4" fill="none"/>
+      <path d="M45,5 Q35,60 45,115" stroke="#ff5e5e" stroke-width="4" fill="none"/>
+      <line x1="35" y1="110" x2="38" y2="140" stroke="#b97f3a" stroke-width="3"/>
+      <line x1="55" y1="110" x2="52" y2="140" stroke="#b97f3a" stroke-width="3"/>
+      <rect x="38" y="140" width="14" height="14" rx="3" fill="#b97f3a" stroke="#fff" stroke-width="2"/>
+    </svg>
+    <svg class="svg-balloon" viewBox="0 0 90 160">
+      <ellipse cx="45" cy="60" rx="40" ry="55" fill="#b97fff" stroke="#5e1aa1" stroke-width="4"/>
+      <ellipse cx="45" cy="60" rx="32" ry="45" fill="none" stroke="#ffe066" stroke-width="6" opacity="0.5"/>
+      <path d="M45,5 Q55,60 45,115" stroke="#ffe066" stroke-width="4" fill="none"/>
+      <path d="M45,5 Q35,60 45,115" stroke="#ffe066" stroke-width="4" fill="none"/>
+      <line x1="35" y1="110" x2="38" y2="140" stroke="#b97f3a" stroke-width="3"/>
+      <line x1="55" y1="110" x2="52" y2="140" stroke="#b97f3a" stroke-width="3"/>
+      <rect x="38" y="140" width="14" height="14" rx="3" fill="#b97f3a" stroke="#fff" stroke-width="2"/>
+    </svg>
+    <svg class="svg-balloon" viewBox="0 0 90 160">
+      <ellipse cx="45" cy="60" rx="40" ry="55" fill="#ffb366" stroke="#a15e00" stroke-width="4"/>
+      <ellipse cx="45" cy="60" rx="32" ry="45" fill="none" stroke="#5ebaff" stroke-width="6" opacity="0.5"/>
+      <path d="M45,5 Q55,60 45,115" stroke="#5ebaff" stroke-width="4" fill="none"/>
+      <path d="M45,5 Q35,60 45,115" stroke="#5ebaff" stroke-width="4" fill="none"/>
+      <line x1="35" y1="110" x2="38" y2="140" stroke="#b97f3a" stroke-width="3"/>
+      <line x1="55" y1="110" x2="52" y2="140" stroke="#b97f3a" stroke-width="3"/>
+      <rect x="38" y="140" width="14" height="14" rx="3" fill="#b97f3a" stroke="#fff" stroke-width="2"/>
+    </svg>
+  </div>
+</body>
+</html>
