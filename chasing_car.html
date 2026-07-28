@@ -98,13 +98,70 @@
     #chaser-panel.collapsed #toggle-panel::before {
       content: '▼'; /* Pfeil nach unten für eingeklappt */
     }
+    .panel-section {
+      width: 100%;
+      border: 1px solid #3a3a3a;
+      border-radius: 8px;
+      background: #1c1c1c;
+      overflow: hidden;
+    }
+    .section-toggle {
+      width: 100%;
+      background: #2c2c2c;
+      color: #ffe066;
+      border: none;
+      text-align: left;
+      padding: 8px 10px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .section-toggle::after {
+      content: '▲';
+      font-size: 0.85em;
+    }
+    .panel-section.collapsed .section-toggle::after {
+      content: '▼';
+    }
+    .section-content {
+      padding: 10px;
+      display: block;
+    }
+    .panel-section.collapsed .section-content {
+      display: none;
+    }
     #chaser-form {
       display: flex;
       flex-direction: column;
       gap: 8px;
       width: 100%;
     }
+    #x-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
     #chaser-form input {
+      padding: 6px;
+      border-radius: 4px;
+      border: none;
+      background: #333;
+      color: #ffe066;
+      font-size: 1em;
+    }
+    #chaser-form select {
+      padding: 6px;
+      border-radius: 4px;
+      border: none;
+      background: #333;
+      color: #ffe066;
+      font-size: 1em;
+    }
+    #x-form input {
       padding: 6px;
       border-radius: 4px;
       border: none;
@@ -121,22 +178,7 @@
       cursor: pointer;
       font-size: 1em;
     }
-    #sonden-form {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      width: 100%;
-      margin-top: 10px;
-    }
-    #sonden-form input {
-      padding: 6px;
-      border-radius: 4px;
-      border: none;
-      background: #333;
-      color: #ffe066;
-      font-size: 1em;
-    }
-    #sonden-form button {
+    #x-form button {
       background: #333;
       color: #ffe066;
       border-radius: 6px;
@@ -199,11 +241,15 @@
         bottom: 10px;
         left: 10px;
       }
-      #chaser-form input, #sonden-form input {
+      #chaser-form input, #x-form input {
         font-size: 0.9em;
         padding: 4px;
       }
-      #chaser-form button, #sonden-form button {
+      #chaser-form select {
+        font-size: 0.9em;
+        padding: 4px;
+      }
+      #chaser-form button, #x-form button {
         font-size: 0.9em;
         padding: 4px 8px;
       }
@@ -226,32 +272,47 @@
   <div id="map"></div>
   <button id="toggle-panel"></button>
   <div id="chaser-panel">
-    <h3>Chaser Position</h3>
-    <form id="chaser-form">
-      <label for="chaser-coords">Latitude,Longitude:</label>
-      <input type="text" id="chaser-coords" placeholder="e.g. 48.79138,14.974624" required>
-      <button type="button" id="get-gps-chaser">Get Current GPS</button>
-      <button type="submit">Save Position</button>
-    </form>
+    <div class="panel-section" data-section="chaser">
+      <button type="button" class="section-toggle">Chaser Position</button>
+      <div class="section-content">
+        <form id="chaser-form">
+          <label for="chaser-user-id">User ID:</label>
+          <select id="chaser-user-id">
+            <option value="auto">auto (latest)</option>
+          </select>
+          <button type="button" id="refresh-users">Refresh Users</button>
+          <label for="chaser-coords">Latitude,Longitude:</label>
+          <input type="text" id="chaser-coords" placeholder="e.g. 48.79138,14.974624" required>
+          <button type="button" id="get-gps-chaser">Get Current GPS</button>
+          <button type="submit">Save Position</button>
+        </form>
+      </div>
+    </div>
+    <div class="panel-section collapsed" data-section="start-point">
+      <button type="button" class="section-toggle">Start Point (X)</button>
+      <div class="section-content">
+        <form id="x-form">
+          <label for="x-coords">Latitude,Longitude:</label>
+          <input type="text" id="x-coords" placeholder="e.g. 49.077094,6.130127" required>
+          <button type="submit">Save Start Point</button>
+        </form>
+      </div>
+    </div>
     <button id="auto-zoom-btn" style="background:#333;color:#ffe066;border-radius:6px;padding:6px 12px;border:none;cursor:pointer;font-size:1em;">Auto Zoom</button>
     <div id="distance-display">Distance: -- km</div>
     <div id="x-distance-display">start distance: -- km</div>
-    <h3>Probe Measurement</h3>
-    <form id="sonden-form">
-      <label for="sonden-coords">Latitude,Longitude:</label>
-      <input type="text" id="sonden-coords" placeholder="e.g. 48.79138,14.974624" required>
-      <button type="button" id="get-gps-sonde">Get Current GPS</button>
-      <button type="submit">Add Probe Point</button>
-    </form>
+    <div id="chaser-status" style="font-size:0.9em;color:#ffd35a;opacity:0.9;">Chaser user: auto</div>
   </div>
   <div id="error-message">Error loading map. Check console for details.</div>
   <script>
-    let map, varioMarker, carMarker, connectionLine, sondenMarkers = [];
+    let map, varioMarker, carMarker, connectionLine;
     let carLatLng = null;
     let xLatLng = [49.077094, 6.130127];  // Koordinaten für gelbes X
     let xMarker, xConnectionLine;
-    let sondeCounter = 1; // Counter for numbering
     let chaserTimestamp = null; // Timestamp for chaser position
+    const CHASER_POLL_MS = 5000;
+    const USER_LIST_POLL_MS = 10000;
+    let activeChaserUserId = 'auto';
 
     try {
       const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -305,14 +366,6 @@
         iconAnchor: [15, 15]
       });
 
-      // Icon for Probe
-      const sondeIcon = L.divIcon({
-        className: '',
-        html: '<div style="font-size:2em;color:#ffff00;">&#x1F4A7;</div>', // Droplet emoji for probe
-        iconSize: [30, 30],
-        iconAnchor: [15, 15]
-      });
-
       function parseTextData(text) {
         const lines = text.split('\n');
         const data = {};
@@ -353,6 +406,164 @@
           }
           xConnectionLine = L.polyline([varioPos, xPos], {color: '#00ff00', weight: 3, opacity: 0.8}).addTo(map);  // Grüne Linie
         }
+      }
+
+      function parseCoordinates(coordsText) {
+        const parts = coordsText.split(',');
+        if (parts.length !== 2) {
+          return null;
+        }
+        const lat = parseFloat(parts[0].trim());
+        const lng = parseFloat(parts[1].trim());
+        if (isNaN(lat) || isNaN(lng)) {
+          return null;
+        }
+        return { lat, lng };
+      }
+
+      function isValidLatLng(lat, lng) {
+        return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+      }
+
+      function sanitizeUserId(userId) {
+        const sanitized = (userId || '')
+          .toString()
+          .trim()
+          .toLowerCase()
+          .replace(/^$/, 'auto')
+          .replace(/[^a-z0-9_.-]/g, '_')
+          .slice(0, 64);
+        return sanitized || 'auto';
+      }
+
+      function setCarPosition(lat, lng, timestamp, fitToMarkers = false) {
+        carLatLng = [lat, lng];
+        chaserTimestamp = timestamp || new Date().toISOString();
+        document.getElementById('chaser-coords').value = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+
+        if (!carMarker) {
+          carMarker = L.marker(carLatLng, {icon: carIcon}).addTo(map)
+            .bindPopup(`<b>Chaser Position</b><br>User: ${activeChaserUserId}<br>Lat: ${lat.toFixed(6)}<br>Lon: ${lng.toFixed(6)}<br>Timestamp: ${chaserTimestamp}`);
+        } else {
+          carMarker.setLatLng(carLatLng)
+            .setPopupContent(`<b>Chaser Position</b><br>User: ${activeChaserUserId}<br>Lat: ${lat.toFixed(6)}<br>Lon: ${lng.toFixed(6)}<br>Timestamp: ${chaserTimestamp}`);
+        }
+
+        updateConnectionLine();
+
+        if (fitToMarkers) {
+          if (varioMarker) {
+            const group = new L.featureGroup([varioMarker, carMarker]);
+            map.fitBounds(group.getBounds().pad(0.1));
+          } else {
+            map.setView(carLatLng, 12);
+          }
+        }
+      }
+
+      function setChaserStatus(text) {
+        const el = document.getElementById('chaser-status');
+        if (el) {
+          el.textContent = text;
+        }
+      }
+
+      function updateUserSelect(users) {
+        const select = document.getElementById('chaser-user-id');
+        const previous = activeChaserUserId || select.value || 'auto';
+        const normalizedUsers = Array.isArray(users) ? users.filter(Boolean) : [];
+
+        select.innerHTML = '';
+        const autoOption = document.createElement('option');
+        autoOption.value = 'auto';
+        autoOption.textContent = 'auto (latest)';
+        select.appendChild(autoOption);
+
+        normalizedUsers.forEach(function(userId) {
+          const opt = document.createElement('option');
+          opt.value = userId;
+          opt.textContent = userId;
+          select.appendChild(opt);
+        });
+
+        const exists = Array.from(select.options).some(function(o) {
+          return o.value === previous;
+        });
+        activeChaserUserId = exists ? previous : 'auto';
+        select.value = activeChaserUserId;
+      }
+
+      function loadChaserUsers() {
+        return fetch(`get_chaser_users.php?_=${Date.now()}`, { cache: 'no-store' })
+          .then(r => r.json())
+          .then(data => {
+            const users = data && Array.isArray(data.users) ? data.users : [];
+            updateUserSelect(users);
+            return users;
+          })
+          .catch(err => {
+            console.log('Could not load chaser users:', err);
+            return [];
+          });
+      }
+
+      function loadSavedChaserPosition() {
+        const url = `get_chaser_position.php?user_id=${encodeURIComponent(activeChaserUserId)}&_=${Date.now()}`;
+        fetch(url, { cache: 'no-store' })
+          .then(r => r.json())
+          .then(data => {
+            const lat = data && data.lat !== null ? Number(data.lat) : NaN;
+            const lng = data && data.lng !== null ? Number(data.lng) : NaN;
+
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+              const shouldFitOnFirstLoad = !carMarker;
+              if (data.selected_user_id) {
+                setChaserStatus(`Chaser user: auto -> ${data.selected_user_id} | ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+              } else {
+                setChaserStatus(`Chaser user: ${activeChaserUserId} | ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+              }
+              setCarPosition(lat, lng, data.timestamp || new Date().toISOString(), shouldFitOnFirstLoad);
+              return;
+            }
+
+            if (data && Array.isArray(data.available_users) && data.available_users.length > 0 && !data.available_users.includes(activeChaserUserId)) {
+              activeChaserUserId = sanitizeUserId(data.available_users[0]);
+              const userInput = document.getElementById('chaser-user-id');
+              userInput.value = activeChaserUserId;
+              localStorage.setItem('chaser_user_id', activeChaserUserId);
+              setChaserStatus(`Chaser user auto-switched to: ${activeChaserUserId}`);
+              loadSavedChaserPosition();
+              return;
+            }
+
+            setChaserStatus(`No position for user: ${activeChaserUserId}`);
+          })
+          .catch(err => {
+            console.log('No saved chaser position:', err);
+            setChaserStatus(`Load error for user: ${activeChaserUserId}`);
+          });
+      }
+
+      function setXPosition(lat, lng) {
+        xLatLng = [lat, lng];
+
+        if (!xMarker) {
+          xMarker = L.marker(xLatLng, {icon: xIcon}).addTo(map)
+            .bindPopup(`<b>X Position</b><br>Lat: ${lat.toFixed(6)}<br>Lon: ${lng.toFixed(6)}`);
+        } else {
+          xMarker.setLatLng(xLatLng)
+            .setPopupContent(`<b>X Position</b><br>Lat: ${lat.toFixed(6)}<br>Lon: ${lng.toFixed(6)}`);
+        }
+
+        document.getElementById('x-coords').value = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+
+        if (varioMarker) {
+          const varioPos = varioMarker.getLatLng();
+          const xDistance = map.distance([varioPos.lat, varioPos.lng], xLatLng) / 1000;
+          document.getElementById('x-distance-display').textContent = `X Distance: ${xDistance.toFixed(2)} km`;
+        }
+
+        updateXConnectionLine();
       }
 
       function updateVarioPosition(data) {
@@ -405,7 +616,6 @@
         if (varioMarker) markers.push(varioMarker);
         if (carMarker) markers.push(carMarker);
         if (xMarker) markers.push(xMarker);
-        markers.push(...sondenMarkers);
         if (markers.length > 0) {
           const group = new L.featureGroup(markers);
           map.fitBounds(group.getBounds().pad(0.1));
@@ -432,9 +642,25 @@
         getCurrentPosition('chaser-coords');
       });
 
-      // Button for Sonde GPS
-      document.getElementById('get-gps-sonde').addEventListener('click', function() {
-        getCurrentPosition('sonden-coords');
+      const chaserUserIdInput = document.getElementById('chaser-user-id');
+      const urlUserId = new URLSearchParams(window.location.search).get('user_id');
+      const storedUserId = localStorage.getItem('chaser_user_id');
+      activeChaserUserId = sanitizeUserId(urlUserId || storedUserId || chaserUserIdInput.value);
+      chaserUserIdInput.value = activeChaserUserId;
+
+      chaserUserIdInput.addEventListener('change', function() {
+        activeChaserUserId = chaserUserIdInput.value === 'auto' ? 'auto' : sanitizeUserId(chaserUserIdInput.value);
+        chaserUserIdInput.value = activeChaserUserId;
+        localStorage.setItem('chaser_user_id', activeChaserUserId);
+        setChaserStatus(`Chaser user: ${activeChaserUserId}`);
+        loadSavedChaserPosition();
+      });
+
+      document.getElementById('refresh-users').addEventListener('click', function() {
+        loadChaserUsers().then(function() {
+          setChaserStatus(`User list updated | active: ${activeChaserUserId}`);
+          loadSavedChaserPosition();
+        });
       });
 
       // Toggle Panel
@@ -443,96 +669,89 @@
         panel.classList.toggle('collapsed');
       });
 
+      // Collapsible sections inside the panel
+      document.querySelectorAll('.section-toggle').forEach(function(toggleBtn) {
+        toggleBtn.addEventListener('click', function() {
+          const section = toggleBtn.closest('.panel-section');
+          if (section) {
+            section.classList.toggle('collapsed');
+          }
+        });
+      });
+
       // Form for Chaser Position
       document.getElementById('chaser-form').addEventListener('submit', function(e) {
         e.preventDefault();
         const coords = document.getElementById('chaser-coords').value.trim();
-        const parts = coords.split(',');
-        if (parts.length !== 2) {
-          alert('Please enter coordinates in the format: Lat,Lon');
-          return;
-        }
-        const lat = parseFloat(parts[0].trim());
-        const lng = parseFloat(parts[1].trim());
-        if (isNaN(lat) || isNaN(lng)) {
+        const parsed = parseCoordinates(coords);
+        if (!parsed) {
           alert('Please enter valid latitude and longitude.');
           return;
         }
-        carLatLng = [lat, lng];
-        chaserTimestamp = new Date().toISOString(); // Set timestamp
+        const { lat, lng } = parsed;
+        if (!isValidLatLng(lat, lng)) {
+          alert('Coordinates out of range. Latitude: -90..90, Longitude: -180..180');
+          return;
+        }
+        activeChaserUserId = chaserUserIdInput.value === 'auto' ? 'auto' : sanitizeUserId(document.getElementById('chaser-user-id').value);
+        document.getElementById('chaser-user-id').value = activeChaserUserId;
+        localStorage.setItem('chaser_user_id', activeChaserUserId);
+        chaserTimestamp = new Date().toISOString();
+        setChaserStatus(`Chaser user: ${activeChaserUserId}`);
 
         // Save to server (assuming save_chaser_position.php exists)
         fetch('save_chaser_position.php', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({lat, lng, timestamp: chaserTimestamp})
+          body: JSON.stringify({user_id: activeChaserUserId, lat, lng, timestamp: chaserTimestamp})
         })
-        .then(r => r.text())
+        .then(r => r.json())
         .then(msg => {
-          alert('Position saved: ' + msg);
+          if (msg.error) {
+            throw new Error(msg.error);
+          }
+          alert('Position saved for user ' + activeChaserUserId + ': ' + (msg.message || 'OK'));
           // Clear the input field
           document.getElementById('chaser-coords').value = '';
         })
         .catch(err => {
-          alert('Error saving position: ' + err);
+          alert('Error saving position: ' + err.message);
         });
 
-        // Set marker for car
-        if (!carMarker) {
-          carMarker = L.marker(carLatLng, {icon: carIcon}).addTo(map)
-            .bindPopup(`<b>Chaser Position</b><br>Lat: ${lat.toFixed(6)}<br>Lon: ${lng.toFixed(6)}<br>Timestamp: ${chaserTimestamp}`);
-        } else {
-          carMarker.setLatLng(carLatLng)
-            .setPopupContent(`<b>Chaser Position</b><br>Lat: ${lat.toFixed(6)}<br>Lon: ${lng.toFixed(6)}<br>Timestamp: ${chaserTimestamp}`);
-        }
-
-        // Update line
-        updateConnectionLine();
-
-        // Center map on both positions if Vario exists
-        if (varioMarker) {
-          const group = new L.featureGroup([varioMarker, carMarker]);
-          map.fitBounds(group.getBounds().pad(0.1));
-        } else {
-          map.setView(carLatLng, 12);
-        }
+        setCarPosition(lat, lng, chaserTimestamp, true);
       });
 
-      // Form for Probe Point
-      document.getElementById('sonden-form').addEventListener('submit', function(e) {
+      // Form for editable X start point
+      document.getElementById('x-form').addEventListener('submit', function(e) {
         e.preventDefault();
-        const coords = document.getElementById('sonden-coords').value.trim();
-        const parts = coords.split(',');
-        if (parts.length !== 2) {
+        const coords = document.getElementById('x-coords').value.trim();
+        const parsed = parseCoordinates(coords);
+        if (!parsed) {
           alert('Please enter coordinates in the format: Lat,Lon');
           return;
         }
-        const lat = parseFloat(parts[0].trim());
-        const lng = parseFloat(parts[1].trim());
-        if (isNaN(lat) || isNaN(lng)) {
-          alert('Please enter valid latitude and longitude.');
+
+        const { lat, lng } = parsed;
+        if (!isValidLatLng(lat, lng)) {
+          alert('Coordinates out of range. Latitude: -90..90, Longitude: -180..180');
           return;
         }
 
-        // Save to server (assuming save_sonden_position.php exists)
-        fetch('save_sonden_position.php', {
+        fetch('save_x_position.php', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({lat, lng})
         })
-        .then(r => r.text())
-        .then(msg => {
-          alert('Probe point added: ' + msg);
-          // Add marker with numbering
-          const marker = L.marker([lat, lng], {icon: sondeIcon}).addTo(map)
-            .bindPopup(`<b>Probe Measurement ${sondeCounter}</b><br>Lat: ${lat.toFixed(6)}<br>Lon: ${lng.toFixed(6)}<br>Timestamp: ${new Date().toISOString()}`);
-          sondenMarkers.push(marker);
-          sondeCounter++;
-          // Clear the input field
-          document.getElementById('sonden-coords').value = '';
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) {
+            throw new Error(data.error);
+          }
+          setXPosition(lat, lng);
+          alert('Start point saved: ' + (data.message || 'OK'));
         })
         .catch(err => {
-          alert('Error adding probe point: ' + err);
+          alert('Error saving start point: ' + err.message);
         });
       });
 
@@ -552,49 +771,27 @@
         });
       });
 
-      // Set marker for X beim Start
-      xMarker = L.marker(xLatLng, {icon: xIcon}).addTo(map)
-        .bindPopup(`<b>X Position</b><br>Lat: ${xLatLng[0].toFixed(6)}<br>Lon: ${xLatLng[1].toFixed(6)}`);
+      // Initialize X marker with default and then overwrite with server value if available
+      setXPosition(xLatLng[0], xLatLng[1]);
 
-      // Update X line beim Start
-      updateXConnectionLine();
-
-      // Load saved Chaser Position on start (optional)
-      fetch('get_chaser_postition.php')  // Correct filename if needed
+      fetch('get_x_position.php')
         .then(r => r.json())
         .then(data => {
-          if (data && data.lat && data.lng) {
-            carLatLng = [data.lat, data.lng];
-            chaserTimestamp = data.timestamp || new Date().toISOString(); // Use saved timestamp or current
-            document.getElementById('chaser-coords').value = `${data.lat},${data.lng}`;
-            carMarker = L.marker(carLatLng, {icon: carIcon}).addTo(map)
-              .bindPopup(`<b>Chaser Position</b><br>Lat: ${data.lat.toFixed(6)}<br>Lon: ${data.lng.toFixed(6)}<br>Timestamp: ${chaserTimestamp}`);
-            // Update line
-            updateConnectionLine();
+          if (data && typeof data.lat === 'number' && typeof data.lng === 'number') {
+            setXPosition(data.lat, data.lng);
           }
         })
-        .catch(err => console.log('No saved chaser position:', err));
+        .catch(err => console.log('No saved X position:', err));
 
-      // Load saved Probe Points on start
-      fetch('get_sonden_positions.php')
-        .then(r => r.json())
-        .then(data => {
-          if (data && Array.isArray(data)) {
-            data.forEach((point, index) => {
-              if (point.lat && point.lng) {
-                const marker = L.marker([point.lat, point.lng], {icon: sondeIcon}).addTo(map)
-                  .bindPopup(`<b>Probe Measurement ${index + 1}</b><br>Lat: ${point.lat.toFixed(6)}<br>Lon: ${point.lng.toFixed(6)}<br>Timestamp: ${point.timestamp || 'N/A'}`);
-                sondenMarkers.push(marker);
-                sondeCounter = Math.max(sondeCounter, index + 2); // Update counter
-              }
-            });
-          }
-        })
-        .catch(err => console.log('No saved probe points:', err))
-        .finally(() => {
-          // Auto zoom after loading all data
-          setTimeout(autoZoom, 500); // Small delay to ensure markers are rendered
-        });
+      // Load and poll saved Chaser Position for selected user
+      loadChaserUsers().then(function() {
+        loadSavedChaserPosition();
+      });
+      setInterval(loadSavedChaserPosition, CHASER_POLL_MS);
+      setInterval(loadChaserUsers, USER_LIST_POLL_MS);
+
+      // Auto zoom after loading all data
+      setTimeout(autoZoom, 500); // Small delay to ensure markers are rendered
     } catch (error) {
       console.error('Error initializing map:', error);
       document.getElementById('error-message').style.display = 'block';
