@@ -516,11 +516,11 @@
     </div>
     <div id="track-time-body">
       <label style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-        <span>From:</span>
+        <span>From (UTC):</span>
         <input id="track-from-datetime" type="datetime-local" step="1" style="background:#111;color:#ffe066;border:1px solid #444;border-radius:6px;padding:3px 6px;">
       </label>
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-        <span>To:</span>
+        <span>To (UTC):</span>
         <input id="track-to-datetime" type="datetime-local" step="1" style="background:#111;color:#ffe066;border:1px solid #444;border-radius:6px;padding:3px 6px;">
         <label style="display:flex;align-items:center;gap:4px;margin-left:4px;cursor:pointer;user-select:none;white-space:nowrap;">
           <input id="track-to-live" type="checkbox" style="margin:0;" checked>
@@ -741,32 +741,56 @@
       return new Date(str);
     }
 
-    function formatDateTimeLocal(date) {
+    function formatDateTimeUtcInput(date) {
       const pad = value => String(value).padStart(2, '0');
-      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+      return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}T${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
     }
 
-    function localInputToApiValue(value) {
+    function utcInputToApiValue(value) {
       if (!value) return '';
+      const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
+      if (match) {
+        const [, y, m, d, hh, mm, ss] = match;
+        return `${y}-${m}-${d} ${hh}:${mm}:${ss || '00'}`;
+      }
+
       const parsed = new Date(value);
       if (!Number.isNaN(parsed.getTime())) {
         return parsed.toISOString().slice(0, 19).replace('T', ' ');
       }
+
       return value.replace('T', ' ').replace(/^(.+\d{2}:\d{2})(?!:)/, '$1:00');
+    }
+
+    function normalizeAnyDateTimeToUtcInput(value) {
+      if (!value) return '';
+      const normalized = String(value).trim();
+      const isoLike = normalized.replace(' ', 'T');
+      const utcCandidate = isoLike.endsWith('Z') ? isoLike : `${isoLike}Z`;
+      const parsed = new Date(utcCandidate);
+      if (!Number.isNaN(parsed.getTime())) {
+        return formatDateTimeUtcInput(parsed);
+      }
+      const plainUtcMatch = normalized.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})(?::(\d{2}))?$/);
+      if (plainUtcMatch) {
+        const [, datePart, hmPart, secPart] = plainUtcMatch;
+        return `${datePart}T${hmPart}:${secPart || '00'}`;
+      }
+      return '';
     }
 
     function getTrackRange() {
       const fromInput = document.getElementById('track-from-datetime');
       const toInput = document.getElementById('track-to-datetime');
       return {
-        from: localInputToApiValue(fromInput.value),
-        to: localInputToApiValue(toInput.value)
+        from: utcInputToApiValue(fromInput.value),
+        to: utcInputToApiValue(toInput.value)
       };
     }
 
     function loadTrackFromDb(doFit = true) {
       if (trackToLiveCheckbox && trackToLiveCheckbox.checked) {
-        trackToInput.value = formatDateTimeLocal(new Date());
+        trackToInput.value = formatDateTimeUtcInput(new Date());
       }
       const { from, to } = getTrackRange();
       const interval = (trackToLiveCheckbox && trackToLiveCheckbox.checked) ? 0 : 1;
@@ -816,8 +840,8 @@
 
     const defaultTrackTo = new Date();
     const defaultTrackFrom = new Date(defaultTrackTo.getTime() - 6 * 60 * 60 * 1000);
-    trackFromInput.value = formatDateTimeLocal(defaultTrackFrom);
-    trackToInput.value = formatDateTimeLocal(defaultTrackTo);
+    trackFromInput.value = formatDateTimeUtcInput(defaultTrackFrom);
+    trackToInput.value = formatDateTimeUtcInput(defaultTrackTo);
     trackToInput.disabled = trackToLiveCheckbox.checked;
 
     trackRangeApplyBtn.addEventListener('click', function() {
@@ -835,7 +859,7 @@
     trackToLiveCheckbox.addEventListener('change', function() {
       trackToInput.disabled = this.checked;
       if (this.checked) {
-        trackToInput.value = formatDateTimeLocal(new Date());
+        trackToInput.value = formatDateTimeUtcInput(new Date());
         loadTrackFromDb(true);
       } else {
         trackToInput.disabled = false;
@@ -851,7 +875,7 @@
     // Live-Modus: To-Zeit aktuell halten und Track regelmäßig aktualisieren
     setInterval(() => {
       if (!trackToLiveCheckbox.checked) return;
-      trackToInput.value = formatDateTimeLocal(new Date());
+      trackToInput.value = formatDateTimeUtcInput(new Date());
       loadTrackFromDb(false);
     }, 10 * 1000);
 
@@ -1893,15 +1917,19 @@
 
           // Track-Zeitraum
           if (data.trackRangeFrom && data.trackRangeTo) {
-            document.getElementById('track-from-datetime').value = data.trackRangeFrom;
-            document.getElementById('track-to-datetime').value = data.trackRangeTo;
+            const importedFromUtc = normalizeAnyDateTimeToUtcInput(data.trackRangeFrom);
+            const importedToUtc = normalizeAnyDateTimeToUtcInput(data.trackRangeTo);
+            if (importedFromUtc && importedToUtc) {
+              document.getElementById('track-from-datetime').value = importedFromUtc;
+              document.getElementById('track-to-datetime').value = importedToUtc;
+            }
             loadTrackFromDb(false);
           } else if (data.trackTime) {
             const fallbackHours = parseInt(data.trackTime, 10) || 6;
             const fallbackTo = new Date();
             const fallbackFrom = new Date(fallbackTo.getTime() - fallbackHours * 60 * 60 * 1000);
-            document.getElementById('track-from-datetime').value = formatDateTimeLocal(fallbackFrom);
-            document.getElementById('track-to-datetime').value = formatDateTimeLocal(fallbackTo);
+            document.getElementById('track-from-datetime').value = formatDateTimeUtcInput(fallbackFrom);
+            document.getElementById('track-to-datetime').value = formatDateTimeUtcInput(fallbackTo);
             loadTrackFromDb(false);
           }
           // Kreis
