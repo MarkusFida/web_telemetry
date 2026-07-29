@@ -61,6 +61,16 @@ $from = isset($_GET['from']) ? $_GET['from'] : null;
 $to = isset($_GET['to']) ? $_GET['to'] : null;
 $interval = isset($_GET['interval']) ? floatval($_GET['interval']) : 0;
 
+if ($from && $to) {
+    $fromTs = strtotime($from);
+    $toTs = strtotime($to);
+    if ($fromTs !== false && $toTs !== false && $fromTs > $toTs) {
+        $tmp = $from;
+        $from = $to;
+        $to = $tmp;
+    }
+}
+
 // Debug: Parameter loggen
 error_log("Track API called with: from=" . ($from ?: 'null') . ", to=" . ($to ?: 'null') . ", interval=" . $interval);
 
@@ -85,34 +95,44 @@ if ($coord_test_result) {
 }
 
 // Basis-SQL für Zeitraum-Filter
-$whereClause = "";
-$params = [];
-$types = "";
+$timeExpr = "CASE 
+                    WHEN created_at IS NOT NULL THEN created_at
+                    WHEN gps_time IS NOT NULL THEN CONCAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), ' ', gps_time)
+                    ELSE NULL
+                END";
 
 if ($from && $to) {
-    // Vereinfachter Ansatz: Lade alle Daten und filtere in JavaScript
-    // Dies umgeht Probleme mit inkonsistenten Zeitformaten in der DB
-    error_log("Loading all data for time range filtering in JavaScript: $from to $to");
-    $whereClause = ""; // Kein WHERE clause = alle Daten laden
+    error_log("Loading data for time range: $from to $to");
+    $sql = "SELECT lat, lon, zeit FROM (
+                SELECT gps_lat AS lat, gps_lng AS lon,
+                       $timeExpr AS zeit
+                FROM vario_data
+                WHERE gps_lat IS NOT NULL AND gps_lng IS NOT NULL
+            ) AS track_data
+            WHERE track_data.zeit IS NOT NULL
+              AND track_data.zeit >= ?
+              AND track_data.zeit <= ?
+            ORDER BY track_data.zeit ASC";
+
+    $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        http_response_code(500);
+        echo json_encode(['error' => 'SQL prepare failed: ' . $conn->error]);
+        exit;
+    }
+
+    $stmt->bind_param('ss', $from, $to);
 }
 
 // Fallback: Wenn keine Zeitparameter angegeben sind, lade die letzten 1000 Einträge
 if (!$from || !$to) {
     error_log("No time parameters provided, using fallback mode");
     $sql = "SELECT gps_lat AS lat, gps_lng AS lon, 
-                   CASE 
-                       WHEN created_at IS NOT NULL THEN created_at
-                       WHEN gps_time IS NOT NULL THEN CONCAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), ' ', gps_time)
-                       ELSE NULL
-                   END as zeit
+                   $timeExpr as zeit
             FROM vario_data
             WHERE gps_lat IS NOT NULL AND gps_lng IS NOT NULL
             ORDER BY 
-                CASE 
-                    WHEN created_at IS NOT NULL THEN created_at
-                    WHEN gps_time IS NOT NULL THEN CONCAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), ' ', gps_time)
-                    ELSE NOW()
-                END DESC
+                $timeExpr DESC
             LIMIT 1000";
 
     $res = $conn->query($sql);
@@ -148,50 +168,24 @@ if (!$from || !$to) {
     exit;
 }
 
-// SQL-Abfrage erstellen
-if ($interval > 0) {
-    // Mit Intervall-Filterung (z.B. alle 6 Sekunden)
-    $sql = "SELECT gps_lat AS lat, gps_lng AS lon, 
-                   CASE 
-                       WHEN created_at IS NOT NULL THEN created_at
-                       WHEN gps_time IS NOT NULL THEN CONCAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), ' ', gps_time)
-                       ELSE NULL
-                   END as zeit
-            FROM vario_data
-            $whereClause
-            ORDER BY 
-                CASE 
-                    WHEN created_at IS NOT NULL THEN created_at
-                    WHEN gps_time IS NOT NULL THEN CONCAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), ' ', gps_time)
-                    ELSE NOW()
-                END ASC";
+// SQL-Abfrage für alle Fälle, in denen kein direkter Zeitraum gesetzt ist
+if ($from && $to) {
+    // bereits vorbereitet
 } else {
     // Alle verfügbaren Punkte laden (interval=0)
     $sql = "SELECT gps_lat AS lat, gps_lng AS lon, 
-                   CASE 
-                       WHEN created_at IS NOT NULL THEN created_at
-                       WHEN gps_time IS NOT NULL THEN CONCAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), ' ', gps_time)
-                       ELSE NULL
-                   END as zeit
+                   $timeExpr as zeit
             FROM vario_data
-            $whereClause
+            WHERE gps_lat IS NOT NULL AND gps_lng IS NOT NULL
             ORDER BY 
-                CASE 
-                    WHEN created_at IS NOT NULL THEN created_at
-                    WHEN gps_time IS NOT NULL THEN CONCAT(DATE_SUB(CURDATE(), INTERVAL 1 DAY), ' ', gps_time)
-                    ELSE NOW()
-                END ASC";
-}
+                $timeExpr ASC";
 
-$stmt = $conn->prepare($sql);
-if ($stmt === false) {
-    http_response_code(500);
-    echo json_encode(['error' => 'SQL prepare failed: ' . $conn->error]);
-    exit;
-}
-
-if ($whereClause) {
-    $stmt->bind_param($types, ...$params);
+    $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        http_response_code(500);
+        echo json_encode(['error' => 'SQL prepare failed: ' . $conn->error]);
+        exit;
+    }
 }
 
 $result = $stmt->execute();

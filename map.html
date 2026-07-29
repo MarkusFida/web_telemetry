@@ -255,6 +255,53 @@
       left: auto !important;
       bottom: auto !important;
     }
+    #track-time-label {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      top: auto;
+      left: auto;
+      width: 260px;
+      min-width: 220px;
+      max-width: 360px;
+      max-height: 42vh;
+      resize: both;
+      overflow: auto;
+      box-sizing: border-box;
+    }
+    #track-time-label.collapsed {
+      width: 220px;
+      height: 46px;
+      resize: none;
+      overflow: hidden;
+    }
+    #track-time-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+      font-weight: bold;
+    }
+    #track-time-toggle {
+      background: #333;
+      color: #ffe066;
+      border: none;
+      border-radius: 4px;
+      padding: 2px 8px;
+      cursor: pointer;
+      font-size: 0.95em;
+      line-height: 1.2;
+    }
+    #track-time-body {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+    #track-time-label.collapsed #track-time-body {
+      display: none;
+    }
     #adsb-panel {
       position: absolute;
       right: 20px;
@@ -349,7 +396,17 @@
       right: 4px;
       bottom: 4px;
     }
-    #track-time-label, #draw-circle-btn, #gps-center-btn {
+    #track-time-label {
+      right: 4px !important;
+      left: auto !important;
+      bottom: 4px !important;
+      top: auto !important;
+      width: min(92vw, 320px);
+      max-height: 34vh;
+      font-size: 0.95em;
+      padding: 6px 8px;
+    }
+    #draw-circle-btn, #gps-center-btn {
       right: 4px !important;
       left: auto !important;
       font-size: 1em;
@@ -452,16 +509,27 @@
   </div>
   
   <div id="map"></div>
-  <label id="track-time-label" style="position:absolute;top:20px;right:460px;margin-right:0;color:#ffe066;z-index:1200;background:#222;padding:7px 14px 7px 14px;border-radius:8px;box-shadow:0 0 8px #000;font-size:1.1em;display:none;">
-    Track-time:
-    <select id="track-time-select" style="margin-left:6px;">
-      <option value="1">last 1h</option>
-      <option value="3">last 3h</option>
-      <option value="6" selected>last 6h</option>
-      <option value="12">last 12h</option>
-      <option value="24">last 24h</option>
-    </select>
-  </label>
+  <div id="track-time-label" style="color:#ffe066;z-index:1200;background:#222;padding:8px 10px;border-radius:8px;box-shadow:0 0 8px #000;font-size:0.95em;display:flex;flex-direction:column;gap:8px;align-items:flex-start;">
+    <div id="track-time-head">
+      <span>Track range</span>
+      <button id="track-time-toggle" type="button" title="Minimize">_</button>
+    </div>
+    <div id="track-time-body">
+      <label style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <span>From:</span>
+        <input id="track-from-datetime" type="datetime-local" step="1" style="background:#111;color:#ffe066;border:1px solid #444;border-radius:6px;padding:3px 6px;">
+      </label>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <span>To:</span>
+        <input id="track-to-datetime" type="datetime-local" step="1" style="background:#111;color:#ffe066;border:1px solid #444;border-radius:6px;padding:3px 6px;">
+        <label style="display:flex;align-items:center;gap:4px;margin-left:4px;cursor:pointer;user-select:none;white-space:nowrap;">
+          <input id="track-to-live" type="checkbox" style="margin:0;" checked>
+          <span>Live</span>
+        </label>
+      </div>
+      <button id="track-range-apply" style="background:#333;color:#ffe066;border-radius:6px;padding:4px 10px;border:none;cursor:pointer;font-weight:bold;align-self:stretch;">Show</button>
+    </div>
+  </div>
   <button id="draw-circle-btn"
     style="position:absolute;top:20px;right:320px;background:#333;color:#ffe066;border-radius:8px;padding:8px 18px;border:none;font-size:1.1em;font-weight:bold;box-shadow:0 0 8px #000;cursor:pointer;z-index:1200;display:none;">
     circle draw
@@ -673,11 +741,41 @@
       return new Date(str);
     }
 
-    function loadTrackFromDb(hours = 6, doFit = true) {
-      const now = new Date();
-      const to = now.toISOString().slice(0,19).replace('T',' ');
-      const from = new Date(now.getTime() - hours * 60 * 60 * 1000).toISOString().slice(0,19).replace('T',' ');
-      const url = `track_api.php?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&interval=1`;  // Interval auf 1 gesetzt, um alle 360 Punkte zu laden
+    function formatDateTimeLocal(date) {
+      const pad = value => String(value).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    }
+
+    function localInputToApiValue(value) {
+      if (!value) return '';
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed.toISOString().slice(0, 19).replace('T', ' ');
+      }
+      return value.replace('T', ' ').replace(/^(.+\d{2}:\d{2})(?!:)/, '$1:00');
+    }
+
+    function getTrackRange() {
+      const fromInput = document.getElementById('track-from-datetime');
+      const toInput = document.getElementById('track-to-datetime');
+      return {
+        from: localInputToApiValue(fromInput.value),
+        to: localInputToApiValue(toInput.value)
+      };
+    }
+
+    function loadTrackFromDb(doFit = true) {
+      if (trackToLiveCheckbox && trackToLiveCheckbox.checked) {
+        trackToInput.value = formatDateTimeLocal(new Date());
+      }
+      const { from, to } = getTrackRange();
+      const interval = (trackToLiveCheckbox && trackToLiveCheckbox.checked) ? 0 : 1;
+      const url = `track_api.php?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&interval=${interval}`;
+
+      if (window.dbTrackLine) {
+        map.removeLayer(window.dbTrackLine);
+        window.dbTrackLine = null;
+      }
 
       fetch(url)
       .then(r => r.json())
@@ -704,15 +802,58 @@
       });
     }
 
-    document.getElementById('track-time-select').addEventListener('change', function() {
-      loadTrackFromDb(parseInt(this.value));
+    const trackFromInput = document.getElementById('track-from-datetime');
+    const trackToInput = document.getElementById('track-to-datetime');
+    const trackToLiveCheckbox = document.getElementById('track-to-live');
+    const trackRangeApplyBtn = document.getElementById('track-range-apply');
+    const trackTimeToggle = document.getElementById('track-time-toggle');
+
+    trackTimeToggle.addEventListener('click', function() {
+      const panel = document.getElementById('track-time-label');
+      panel.classList.toggle('collapsed');
+      this.textContent = panel.classList.contains('collapsed') ? '+' : '_';
     });
 
-    loadTrackFromDb(parseInt(document.getElementById('track-time-select').value));
+    const defaultTrackTo = new Date();
+    const defaultTrackFrom = new Date(defaultTrackTo.getTime() - 6 * 60 * 60 * 1000);
+    trackFromInput.value = formatDateTimeLocal(defaultTrackFrom);
+    trackToInput.value = formatDateTimeLocal(defaultTrackTo);
+    trackToInput.disabled = trackToLiveCheckbox.checked;
+
+    trackRangeApplyBtn.addEventListener('click', function() {
+      loadTrackFromDb(true);
+    });
+
+    trackFromInput.addEventListener('change', function() {
+      loadTrackFromDb(true);
+    });
+
+    trackToInput.addEventListener('change', function() {
+      loadTrackFromDb(true);
+    });
+
+    trackToLiveCheckbox.addEventListener('change', function() {
+      trackToInput.disabled = this.checked;
+      if (this.checked) {
+        trackToInput.value = formatDateTimeLocal(new Date());
+        loadTrackFromDb(true);
+      } else {
+        trackToInput.disabled = false;
+      }
+    });
+
+    loadTrackFromDb(true);
     // Automatische Aktualisierung alle 5 Minuten
     setInterval(() => {
-      loadTrackFromDb(parseInt(document.getElementById('track-time-select').value), false);
+      loadTrackFromDb(false);
     }, 5 * 60 * 1000); // 5 Minuten
+
+    // Live-Modus: To-Zeit aktuell halten und Track regelmäßig aktualisieren
+    setInterval(() => {
+      if (!trackToLiveCheckbox.checked) return;
+      trackToInput.value = formatDateTimeLocal(new Date());
+      loadTrackFromDb(false);
+    }, 10 * 1000);
 
     let trajTrackData = []; // speichert {latlngs, times, color, name, elevations, fileName}
 
@@ -1680,7 +1821,8 @@
       const exportData = {
         loadedFiles: loadedFileNames,
         circle: lastCircleData,
-        trackTime: document.getElementById('track-time-select').value,
+        trackRangeFrom: document.getElementById('track-from-datetime').value,
+        trackRangeTo: document.getElementById('track-to-datetime').value,
         mapZoom: map.getZoom(),
         mapCenter: map.getCenter(),
         trajData: trajData
@@ -1749,10 +1891,18 @@
           // Dateinamen zurücksetzen
           loadedFileNames = [];
 
-          // Track-Time
-          if (data.trackTime) {
-            document.getElementById('track-time-select').value = data.trackTime;
-            loadTrackFromDb(parseInt(data.trackTime), false);
+          // Track-Zeitraum
+          if (data.trackRangeFrom && data.trackRangeTo) {
+            document.getElementById('track-from-datetime').value = data.trackRangeFrom;
+            document.getElementById('track-to-datetime').value = data.trackRangeTo;
+            loadTrackFromDb(false);
+          } else if (data.trackTime) {
+            const fallbackHours = parseInt(data.trackTime, 10) || 6;
+            const fallbackTo = new Date();
+            const fallbackFrom = new Date(fallbackTo.getTime() - fallbackHours * 60 * 60 * 1000);
+            document.getElementById('track-from-datetime').value = formatDateTimeLocal(fallbackFrom);
+            document.getElementById('track-to-datetime').value = formatDateTimeLocal(fallbackTo);
+            loadTrackFromDb(false);
           }
           // Kreis
           if (data.circle && typeof data.circle.lat === "number" && typeof data.circle.lng === "number" && typeof data.circle.radius === "number") {
