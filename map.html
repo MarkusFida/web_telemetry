@@ -667,6 +667,8 @@
     let showLinearForecast = true;
     let showIconEuForecast = true;
     let lastKnownGpsData = null;
+    let lastKnownCourse = 0;
+    let lastKnownSpeed = 0;
     let trackCoords = [];
     let trajTracks = [];
     let trajLayers = [];
@@ -1557,15 +1559,15 @@
       }
       if (!lastKnownGpsData) return;
 
-      const values = [lastKnownGpsData.gps_lat, lastKnownGpsData.gps_lng, lastKnownGpsData.gps_alt, lastKnownGpsData.gps_course, lastKnownGpsData.gps_speed];
+      const values = [lastKnownGpsData.gps_lat, lastKnownGpsData.gps_lng, lastKnownGpsData.gps_alt];
       if (values.some(value => value === undefined || value === null || value === "" || !Number.isFinite(Number(value)))) return;
 
       const params = new URLSearchParams({
         lat: lastKnownGpsData.gps_lat,
         lon: lastKnownGpsData.gps_lng,
         altitude: lastKnownGpsData.gps_alt,
-        course: lastKnownGpsData.gps_course,
-        speed: lastKnownGpsData.gps_speed,
+        course: Number.isFinite(Number(lastKnownGpsData.gps_course)) ? lastKnownGpsData.gps_course : 0,
+        speed: Number.isFinite(Number(lastKnownGpsData.gps_speed)) ? lastKnownGpsData.gps_speed : 0,
         time: new Date().toISOString()
       });
       fetch(`icon_eu_trajectory.php?${params}`)
@@ -1636,9 +1638,9 @@
         map.removeLayer(forecast.layerGroup);
         forecast.layerGroup = null;
       }
-      forecast.markers.forEach(markerLayer => map.removeLayer(markerLayer));
+      (forecast.markers || []).forEach(markerLayer => map.removeLayer(markerLayer));
       forecast.markers = [];
-      forecast.sunMarkers.forEach(markerLayer => map.removeLayer(markerLayer));
+      (forecast.sunMarkers || []).forEach(markerLayer => map.removeLayer(markerLayer));
       forecast.sunMarkers = [];
     }
 
@@ -1753,7 +1755,7 @@
       if (!lastKnownGpsData) return;
       saveCustomForecastSettings();
       readCustomForecastSettings();
-      const values = [lastKnownGpsData.gps_lat, lastKnownGpsData.gps_lng, lastKnownGpsData.gps_course, lastKnownGpsData.gps_speed];
+      const values = [lastKnownGpsData.gps_lat, lastKnownGpsData.gps_lng];
       if (values.some(value => value === undefined || value === null || value === "" || !Number.isFinite(Number(value)))) return;
 
       const requests = customForecasts.map(forecast => {
@@ -1762,8 +1764,8 @@
           lat: lastKnownGpsData.gps_lat,
           lon: lastKnownGpsData.gps_lng,
           altitude: forecast.altitude * 0.3048,
-          course: lastKnownGpsData.gps_course,
-          speed: lastKnownGpsData.gps_speed,
+          course: Number.isFinite(Number(lastKnownGpsData.gps_course)) ? lastKnownGpsData.gps_course : 0,
+          speed: Number.isFinite(Number(lastKnownGpsData.gps_speed)) ? lastKnownGpsData.gps_speed : 0,
           time: new Date().toISOString()
         });
         return fetch(`icon_eu_trajectory.php?${params}`)
@@ -2208,6 +2210,12 @@
     function updateMap(data) {
       if (!data.gps_lat || !data.gps_lng || isNaN(data.gps_lat) || isNaN(data.gps_lng)) return;
 
+      const currentCourse = Number.parseFloat(data.gps_course);
+      const currentSpeed = Number.parseFloat(data.gps_speed);
+      if (Number.isFinite(currentCourse)) lastKnownCourse = currentCourse;
+      if (Number.isFinite(currentSpeed)) lastKnownSpeed = Math.max(0, currentSpeed);
+      data.gps_course = lastKnownCourse;
+      data.gps_speed = lastKnownSpeed;
       lastKnownGpsData = data;
       updateExtrapolatedTrack();
       if (lastIconEuRequest === 0) {

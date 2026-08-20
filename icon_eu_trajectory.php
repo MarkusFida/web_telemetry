@@ -8,9 +8,11 @@ $lon = filter_input(INPUT_GET, 'lon', FILTER_VALIDATE_FLOAT);
 $altitude = filter_input(INPUT_GET, 'altitude', FILTER_VALIDATE_FLOAT);
 $course = filter_input(INPUT_GET, 'course', FILTER_VALIDATE_FLOAT);
 $speed = filter_input(INPUT_GET, 'speed', FILTER_VALIDATE_FLOAT);
+$course = ($course === null || $course === false) ? 0.0 : (float) $course;
+$speed = ($speed === null || $speed === false) ? 0.0 : (float) $speed;
 $startTime = isset($_GET['time']) ? strtotime((string) $_GET['time']) : time();
 
-if ($lat === false || $lon === false || $altitude === false || $course === false || $speed === false || $startTime === false ||
+if ($lat === false || $lon === false || $altitude === false || $startTime === false ||
     $lat < -90 || $lat > 90 || $lon < -180 || $lon > 180 || $altitude < 0 || $speed < 0) {
     http_response_code(400);
     echo json_encode(['error' => 'Ungültige GPS-, Höhen-, Kurs- oder Geschwindigkeitsdaten']);
