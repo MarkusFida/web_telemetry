@@ -195,6 +195,35 @@
       flex-direction: column;
       gap: 5px;
     }
+    #custom-forecast-section {
+      width: 100%;
+      border-top: 1px solid #555;
+      padding-top: 8px;
+    }
+    .custom-forecast-row {
+      display: grid;
+      grid-template-columns: 24px 1fr 48px;
+      align-items: center;
+      gap: 6px;
+      margin-top: 5px;
+    }
+    .custom-forecast-row input[type="number"] {
+      width: 100%;
+      box-sizing: border-box;
+      background: #111;
+      color: #ffe066;
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 3px 5px;
+    }
+    .custom-forecast-row input[type="color"] {
+      width: 42px;
+      height: 26px;
+      padding: 1px;
+      background: #111;
+      border: 1px solid #555;
+      border-radius: 4px;
+    }
     #trajektorie-controls.collapsed #traj-list-section,
     #trajektorie-controls.collapsed #traj-file-section,
     #trajektorie-controls.collapsed #traj-buttons-section {
@@ -492,6 +521,25 @@
     <div id="traj-list-section">
       <span id="trajektorie-list"></span>
     </div>
+    <div id="custom-forecast-section">
+      <div style="font-weight:bold;">Live forecast altitudes (ft):</div>
+      <div class="custom-forecast-row">
+        <input type="checkbox" class="custom-forecast-enabled" checked>
+        <input type="number" class="custom-forecast-altitude" value="1640" min="0" max="65617" step="100" title="Altitude in feet">
+        <input type="color" class="custom-forecast-color" value="#00bfff" title="Trajectory color">
+      </div>
+      <div class="custom-forecast-row">
+        <input type="checkbox" class="custom-forecast-enabled" checked>
+        <input type="number" class="custom-forecast-altitude" value="3281" min="0" max="65617" step="100" title="Altitude in feet">
+        <input type="color" class="custom-forecast-color" value="#ff9800" title="Trajectory color">
+      </div>
+      <div class="custom-forecast-row">
+        <input type="checkbox" class="custom-forecast-enabled" checked>
+        <input type="number" class="custom-forecast-altitude" value="6562" min="0" max="65617" step="100" title="Altitude in feet">
+        <input type="color" class="custom-forecast-color" value="#ff00cc" title="Trajectory color">
+      </div>
+      <button id="custom-forecast-apply" style="margin-top:8px;background:#333;color:#ffe066;border-radius:6px;padding:4px 10px;border:none;cursor:pointer;font-weight:bold;width:100%;">Calculate forecast</button>
+    </div>
     <div id="traj-file-section">
       <div style="display:flex;flex-direction:column;align-items:flex-start;">
         <input type="file" id="trajektorie-gpx" accept=".gpx,.kml,.kmz" multiple title="Load GPX/KML/KMZ with multiple tracks"/>
@@ -607,9 +655,18 @@
   <script>
     // Der gesamte JavaScript-Code bleibt unverändert
     let map, marker, trackLine;
-    let extrapolatedTrackLine = null;
+    let extrapolatedTrackLines = [];
     let extrapolatedHourMarkers = [];
-    let latestGpsData = null;
+    let extrapolatedSunMarkers = [];
+    let iconEuTrajectoryLine = null;
+    let iconEuTrajectoryMarkers = [];
+    let iconEuSunMarkers = [];
+    let cachedIconEuPoints = null;
+    let customForecasts = [];
+    let lastIconEuRequest = 0;
+    let showLinearForecast = true;
+    let showIconEuForecast = true;
+    let lastKnownGpsData = null;
     let trackCoords = [];
     let trajTracks = [];
     let trajLayers = [];
@@ -696,6 +753,38 @@
 
         // adsbDiv removed - skipping insertion
         openaipLabel.parentNode.insertBefore(trajDiv, openaipLabel.nextSibling);
+
+        const forecastDiv = document.createElement('div');
+        forecastDiv.style.marginTop = "4px";
+        forecastDiv.innerHTML = `
+          <label style="color:#222;font-size:1em;cursor:pointer;display:flex;align-items:center;">
+            <input type="checkbox" id="linear-forecast-checkbox" style="margin-right:6px;" checked>
+            Linear forecast
+          </label>
+          <label style="color:#222;font-size:1em;cursor:pointer;display:flex;align-items:center;">
+            <input type="checkbox" id="icon-eu-forecast-checkbox" style="margin-right:6px;" checked>
+            ICON-EU live trajectory
+          </label>
+        `;
+        openaipLabel.parentNode.insertBefore(forecastDiv, trajDiv.nextSibling);
+
+        forecastDiv.querySelector('#linear-forecast-checkbox').addEventListener('change', function() {
+          showLinearForecast = this.checked;
+          if (showLinearForecast) {
+            updateExtrapolatedTrack();
+          } else {
+            clearExtrapolatedTrack();
+          }
+        });
+
+        forecastDiv.querySelector('#icon-eu-forecast-checkbox').addEventListener('change', function() {
+          showIconEuForecast = this.checked;
+          if (showIconEuForecast) {
+            updateIconEuTrajectory();
+          } else {
+            clearIconEuTrajectory();
+          }
+        });
 
         // ADSB checkbox event handler removed - ADSB is disabled
         const trajToggleCheckbox = trajDiv.querySelector('#traj-toggle-checkbox');
@@ -819,7 +908,7 @@
           return;
         }
         if (window.dbTrackLine) map.removeLayer(window.dbTrackLine);
-        window.dbTrackLine = L.polyline(latlngs, {color: "#2196f3", weight: 4, opacity: 0.8}).addTo(map);
+        window.dbTrackLine = L.polyline(latlngs, {color: "#2196f3", weight: 5, opacity: 0.9}).addTo(map);
         if (doFit) {
           map.fitBounds(window.dbTrackLine.getBounds().pad(0.1));
         }
@@ -986,7 +1075,7 @@
               elevations.push(eleNode ? parseFloat(eleNode.textContent) : null);
             }
           }
-          const poly = L.polyline(latlngs, {color, weight: 4, opacity: 0.9, interactive: true});
+          const poly = L.polyline(latlngs, {color, weight: 5, opacity: 1, interactive: true});
           poly.addTo(map);
 
           // Popup bei Klick auf Trajektorie
@@ -1162,7 +1251,7 @@
               const [lng, lat] = s.split(',').map(Number);
               return [lat, lng];
             });
-            const poly = L.polyline(coords, {color: "#00bfff", weight: 4, opacity: 0.9, interactive: true});
+            const poly = L.polyline(coords, {color: "#00bfff", weight: 5, opacity: 1, interactive: true});
             poly.addTo(map);
 
             // Popup bei Klick auf Trajektorie (nur Koordinaten)
@@ -1380,13 +1469,332 @@
     }
 
     function clearExtrapolatedTrack() {
-      if (extrapolatedTrackLine) {
-        map.removeLayer(extrapolatedTrackLine);
-        extrapolatedTrackLine = null;
-      }
+      extrapolatedTrackLines.forEach(line => map.removeLayer(line));
+      extrapolatedTrackLines = [];
       extrapolatedHourMarkers.forEach(markerLayer => map.removeLayer(markerLayer));
       extrapolatedHourMarkers = [];
+      extrapolatedSunMarkers.forEach(markerLayer => map.removeLayer(markerLayer));
+      extrapolatedSunMarkers = [];
     }
+
+    function clearIconEuTrajectory() {
+      if (iconEuTrajectoryLine) {
+        map.removeLayer(iconEuTrajectoryLine);
+        iconEuTrajectoryLine = null;
+      }
+      iconEuTrajectoryMarkers.forEach(markerLayer => map.removeLayer(markerLayer));
+      iconEuTrajectoryMarkers = [];
+      iconEuSunMarkers.forEach(markerLayer => map.removeLayer(markerLayer));
+      iconEuSunMarkers = [];
+    }
+
+    function trimTrajectoryToMap(points) {
+      if (!points.length) return [];
+      const size = map.getSize();
+      const visible = [points[0]];
+      for (let index = 1; index < points.length; index++) {
+        const previous = visible[visible.length - 1];
+        const current = points[index];
+        const previousPoint = map.latLngToContainerPoint([previous.lat, previous.lon]);
+        const currentPoint = map.latLngToContainerPoint([current.lat, current.lon]);
+        const currentInside = currentPoint.x >= 0 && currentPoint.x <= size.x && currentPoint.y >= 0 && currentPoint.y <= size.y;
+        if (currentInside) {
+          visible.push(current);
+          continue;
+        }
+
+        const deltaX = currentPoint.x - previousPoint.x;
+        const deltaY = currentPoint.y - previousPoint.y;
+        const factors = [];
+        if (deltaX !== 0) {
+          factors.push((0 - previousPoint.x) / deltaX, (size.x - previousPoint.x) / deltaX);
+        }
+        if (deltaY !== 0) {
+          factors.push((0 - previousPoint.y) / deltaY, (size.y - previousPoint.y) / deltaY);
+        }
+        const edgeFactor = factors.filter(factor => factor >= 0 && factor <= 1).sort((a, b) => a - b)[0];
+        if (Number.isFinite(edgeFactor)) {
+          const edgePoint = map.containerPointToLatLng({
+            x: previousPoint.x + deltaX * edgeFactor,
+            y: previousPoint.y + deltaY * edgeFactor
+          });
+          visible.push({
+            lat: edgePoint.lat,
+            lon: edgePoint.lng,
+            time: new Date(new Date(previous.time).getTime() + (new Date(current.time) - new Date(previous.time)) * edgeFactor).toISOString()
+          });
+        }
+        break;
+      }
+      return visible;
+    }
+
+    function addIconEuSunMarker(point, isSunset) {
+      const date = new Date(point.time);
+      const timeText = `${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(2, "0")} UTC`;
+      const marker = L.circleMarker([point.lat, point.lon], {
+        radius: 7,
+        color: isSunset ? "#000" : "#ff9800",
+        fillColor: isSunset ? "#333" : "#ffe066",
+        fillOpacity: 0.95,
+        weight: 3,
+        interactive: false
+      }).addTo(map);
+      marker.bindTooltip(timeText, {
+        permanent: true,
+        direction: "top",
+        offset: [0, -6]
+      });
+      iconEuSunMarkers.push(marker);
+    }
+
+    function updateIconEuTrajectory(forceFetch = true) {
+      clearIconEuTrajectory();
+      if (!showIconEuForecast) return;
+      if (!forceFetch && Array.isArray(cachedIconEuPoints)) {
+        renderIconEuTrajectory(cachedIconEuPoints);
+        return;
+      }
+      if (!lastKnownGpsData) return;
+
+      const values = [lastKnownGpsData.gps_lat, lastKnownGpsData.gps_lng, lastKnownGpsData.gps_alt, lastKnownGpsData.gps_course, lastKnownGpsData.gps_speed];
+      if (values.some(value => value === undefined || value === null || value === "" || !Number.isFinite(Number(value)))) return;
+
+      const params = new URLSearchParams({
+        lat: lastKnownGpsData.gps_lat,
+        lon: lastKnownGpsData.gps_lng,
+        altitude: lastKnownGpsData.gps_alt,
+        course: lastKnownGpsData.gps_course,
+        speed: lastKnownGpsData.gps_speed,
+        time: new Date().toISOString()
+      });
+      fetch(`icon_eu_trajectory.php?${params}`)
+        .then(response => response.json())
+        .then(data => {
+          if (!Array.isArray(data.points) || data.points.length < 2) return;
+          cachedIconEuPoints = data.points;
+          renderIconEuTrajectory(cachedIconEuPoints);
+        })
+        .catch(error => console.warn("ICON-EU-Trajektorie nicht verfügbar:", error));
+    }
+
+    function renderIconEuTrajectory(points) {
+          const visiblePoints = points;
+          if (visiblePoints.length < 2) return;
+
+          let segmentPoints = [visiblePoints[0]];
+          let segmentIsDaylight = solarElevation(new Date(visiblePoints[0].time), visiblePoints[0].lat, visiblePoints[0].lon) >= 0;
+          for (let index = 1; index < visiblePoints.length; index++) {
+            const point = visiblePoints[index];
+            const isDaylight = solarElevation(new Date(point.time), point.lat, point.lon) >= 0;
+            if (isDaylight !== segmentIsDaylight) {
+              addIconEuSunMarker(point, segmentIsDaylight);
+              const line = L.polyline(segmentPoints.concat(point).map(item => [item.lat, item.lon]), {
+                color: segmentIsDaylight ? "#00e5ff" : "#0b3d5c",
+                weight: 5,
+                opacity: 1,
+                dashArray: "2 6",
+                interactive: false
+              }).addTo(map);
+              iconEuTrajectoryLine = iconEuTrajectoryLine || L.layerGroup().addTo(map);
+              iconEuTrajectoryLine.addLayer(line);
+              segmentPoints = [point];
+              segmentIsDaylight = isDaylight;
+            } else {
+              segmentPoints.push(point);
+            }
+          }
+          const finalLine = L.polyline(segmentPoints.map(point => [point.lat, point.lon]), {
+            color: segmentIsDaylight ? "#00e5ff" : "#0b3d5c",
+            weight: 5,
+            opacity: 1,
+            dashArray: "2 6",
+            interactive: false
+          }).addTo(map);
+          iconEuTrajectoryLine = iconEuTrajectoryLine || L.layerGroup().addTo(map);
+          iconEuTrajectoryLine.addLayer(finalLine);
+
+          visiblePoints.forEach((point, index) => {
+            if (index === 0 || index % 6 !== 0) return;
+            const date = new Date(point.time);
+            const hourText = String(date.getUTCHours()).padStart(2, "0");
+            const marker = L.marker([point.lat, point.lon], {
+              icon: L.divIcon({
+                className: "",
+                html: `<div style="transform:translate(-50%,-50%);font-size:1.2em;font-weight:bold;color:#00e5ff;text-shadow:0 1px 2px #000,0 0 4px #000;white-space:nowrap;">${hourText}</div>`,
+                iconSize: [0, 0],
+                iconAnchor: [0, 0]
+              }),
+              interactive: false
+            }).addTo(map);
+            iconEuTrajectoryMarkers.push(marker);
+          });
+    }
+
+    function clearCustomForecast(forecast) {
+      if (forecast.layerGroup) {
+        map.removeLayer(forecast.layerGroup);
+        forecast.layerGroup = null;
+      }
+      forecast.markers.forEach(markerLayer => map.removeLayer(markerLayer));
+      forecast.markers = [];
+      forecast.sunMarkers.forEach(markerLayer => map.removeLayer(markerLayer));
+      forecast.sunMarkers = [];
+    }
+
+    function readCustomForecastSettings() {
+      const rows = document.querySelectorAll('.custom-forecast-row');
+      customForecasts = Array.from(rows).map((row, index) => {
+        const previous = customForecasts[index] || {};
+        return {
+          index,
+          enabled: row.querySelector('.custom-forecast-enabled').checked,
+          altitude: Number(row.querySelector('.custom-forecast-altitude').value),
+          color: row.querySelector('.custom-forecast-color').value,
+          points: previous.points || null,
+          layerGroup: previous.layerGroup || null,
+          markers: previous.markers || [],
+          sunMarkers: previous.sunMarkers || []
+        };
+      });
+    }
+
+    function saveCustomForecastSettings() {
+      const settings = Array.from(document.querySelectorAll('.custom-forecast-row')).map(row => ({
+        enabled: row.querySelector('.custom-forecast-enabled').checked,
+        altitude: row.querySelector('.custom-forecast-altitude').value,
+        color: row.querySelector('.custom-forecast-color').value
+      }));
+      localStorage.setItem('mapCustomForecastSettings', JSON.stringify(settings));
+    }
+
+    function loadCustomForecastSettings() {
+      try {
+        const settings = JSON.parse(localStorage.getItem('mapCustomForecastSettings') || 'null');
+        if (!Array.isArray(settings)) return;
+        document.querySelectorAll('.custom-forecast-row').forEach((row, index) => {
+          const saved = settings[index];
+          if (!saved) return;
+          const enabled = row.querySelector('.custom-forecast-enabled');
+          const altitude = row.querySelector('.custom-forecast-altitude');
+          const color = row.querySelector('.custom-forecast-color');
+          if (typeof saved.enabled === 'boolean') enabled.checked = saved.enabled;
+          if (Number.isFinite(Number(saved.altitude))) altitude.value = saved.altitude;
+          if (typeof saved.color === 'string' && /^#[0-9a-f]{6}$/i.test(saved.color)) color.value = saved.color;
+        });
+      } catch (error) {
+        console.warn('Saved forecast settings could not be loaded:', error);
+      }
+    }
+
+    function renderCustomForecast(forecast) {
+      clearCustomForecast(forecast);
+      if (!forecast.enabled || !Array.isArray(forecast.points) || forecast.points.length < 2) return;
+
+      forecast.layerGroup = L.layerGroup().addTo(map);
+      const line = L.polyline(forecast.points.map(point => [point.lat, point.lon]), {
+        color: forecast.color,
+        weight: 5,
+        opacity: 1,
+        dashArray: "2 6",
+        interactive: false
+      }).addTo(forecast.layerGroup);
+      forecast.points.forEach((point, pointIndex) => {
+        if (pointIndex === 0 || pointIndex % 6 !== 0) return;
+        const date = new Date(point.time);
+        const hourText = String(date.getUTCHours()).padStart(2, "0");
+        const marker = L.marker([point.lat, point.lon], {
+          icon: L.divIcon({
+            className: "",
+            html: `<div style="transform:translate(-50%,-50%);font-size:1.2em;font-weight:bold;color:${forecast.color};text-shadow:0 1px 2px #000,0 0 4px #000;white-space:nowrap;">${hourText}</div>`,
+            iconSize: [0, 0],
+            iconAnchor: [0, 0]
+          }),
+          interactive: false
+        }).addTo(map);
+        forecast.markers.push(marker);
+      });
+
+      let previousDaylight = solarElevation(
+        new Date(forecast.points[0].time),
+        forecast.points[0].lat,
+        forecast.points[0].lon
+      ) >= 0;
+      for (let pointIndex = 1; pointIndex < forecast.points.length; pointIndex++) {
+        const point = forecast.points[pointIndex];
+        const daylight = solarElevation(new Date(point.time), point.lat, point.lon) >= 0;
+        if (daylight === previousDaylight) continue;
+
+        const date = new Date(point.time);
+        const timeText = `${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(2, "0")} UTC`;
+        const sunMarker = L.circleMarker([point.lat, point.lon], {
+          radius: 7,
+          color: daylight ? "#ff9800" : "#111",
+          fillColor: daylight ? "#ffe066" : "#444",
+          fillOpacity: 0.95,
+          weight: 3,
+          interactive: false
+        }).addTo(map);
+        sunMarker.bindTooltip(timeText, {
+          permanent: true,
+          direction: "top",
+          offset: [0, -6]
+        });
+        forecast.sunMarkers.push(sunMarker);
+        previousDaylight = daylight;
+      }
+    }
+
+    function renderAllCustomForecasts() {
+      customForecasts.forEach(renderCustomForecast);
+    }
+
+    function updateCustomForecasts() {
+      if (!lastKnownGpsData) return;
+      saveCustomForecastSettings();
+      readCustomForecastSettings();
+      const values = [lastKnownGpsData.gps_lat, lastKnownGpsData.gps_lng, lastKnownGpsData.gps_course, lastKnownGpsData.gps_speed];
+      if (values.some(value => value === undefined || value === null || value === "" || !Number.isFinite(Number(value)))) return;
+
+      const requests = customForecasts.map(forecast => {
+        if (!forecast.enabled || !Number.isFinite(forecast.altitude)) return Promise.resolve(null);
+        const params = new URLSearchParams({
+          lat: lastKnownGpsData.gps_lat,
+          lon: lastKnownGpsData.gps_lng,
+          altitude: forecast.altitude * 0.3048,
+          course: lastKnownGpsData.gps_course,
+          speed: lastKnownGpsData.gps_speed,
+          time: new Date().toISOString()
+        });
+        return fetch(`icon_eu_trajectory.php?${params}`)
+          .then(response => response.json())
+          .then(data => Array.isArray(data.points) ? data.points : null)
+          .catch(error => {
+            console.warn(`Forecast at ${forecast.altitude} ft unavailable:`, error);
+            return null;
+          });
+      });
+
+      Promise.all(requests).then(pointSets => {
+        pointSets.forEach((points, index) => {
+          if (points) customForecasts[index].points = points;
+        });
+        renderAllCustomForecasts();
+      });
+    }
+
+    document.getElementById('custom-forecast-apply').addEventListener('click', updateCustomForecasts);
+    document.querySelectorAll('.custom-forecast-enabled').forEach(input => {
+      input.addEventListener('change', () => {
+        saveCustomForecastSettings();
+        readCustomForecastSettings();
+        renderAllCustomForecasts();
+      });
+    });
+    document.querySelectorAll('.custom-forecast-altitude, .custom-forecast-color').forEach(input => {
+      input.addEventListener('change', saveCustomForecastSettings);
+    });
+    loadCustomForecastSettings();
 
     function getVisibleTrackEnd(startLatLng, course) {
       const startPoint = map.latLngToContainerPoint(startLatLng);
@@ -1430,29 +1838,125 @@
       );
     }
 
-    function updateExtrapolatedTrack() {
-      clearExtrapolatedTrack();
-      if (!latestGpsData) return;
+    function solarElevation(date, lat, lng) {
+      const radians = Math.PI / 180;
+      const startOfYear = Date.UTC(date.getUTCFullYear(), 0, 1);
+      const dayOfYear = Math.floor((Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) - startOfYear) / 86400000) + 1;
+      const fractionalHour = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
+      const gamma = 2 * Math.PI / 365 * (dayOfYear - 1 + (fractionalHour - 12) / 24);
+      const equationOfTime = 229.18 * (
+        0.000075 + 0.001868 * Math.cos(gamma) - 0.032077 * Math.sin(gamma) -
+        0.014615 * Math.cos(2 * gamma) - 0.040849 * Math.sin(2 * gamma)
+      );
+      const declination = (
+        0.006918 - 0.399912 * Math.cos(gamma) + 0.070257 * Math.sin(gamma) -
+        0.006758 * Math.cos(2 * gamma) + 0.000907 * Math.sin(2 * gamma) -
+        0.002697 * Math.cos(3 * gamma) + 0.00148 * Math.sin(3 * gamma)
+      );
+      const utcMinutes = fractionalHour * 60;
+      const trueSolarMinutes = utcMinutes + equationOfTime + 4 * lng;
+      const hourAngle = (trueSolarMinutes / 4 - 180) * radians;
+      const latitude = lat * radians;
+      const geometricElevation = Math.asin(
+        Math.sin(latitude) * Math.sin(declination) +
+        Math.cos(latitude) * Math.cos(declination) * Math.cos(hourAngle)
+      ) / radians;
 
-      const course = Number.parseFloat(latestGpsData.gps_course);
-      const speedKnots = Number.parseFloat(latestGpsData.gps_speed);
-      if (!Number.isFinite(course) || !Number.isFinite(speedKnots) || speedKnots <= 0) return;
+      return geometricElevation + 0.833;
+    }
 
-      const start = L.latLng(latestGpsData.gps_lat, latestGpsData.gps_lng);
-      const end = getVisibleTrackEnd(start, course);
-      if (!end) return;
-
-      extrapolatedTrackLine = L.polyline([start, end], {
-        color: "#ff9800",
-        weight: 3,
-        opacity: 0.9,
+    function addExtrapolatedLineSegment(points, isDaylight) {
+      if (points.length < 2) return;
+      const line = L.polyline(points, {
+        color: isDaylight ? "#ff9800" : "#000000",
+        weight: 5,
+        opacity: 1,
         dashArray: "8 7",
         interactive: false,
         pane: "shadowPane"
       }).addTo(map);
+      extrapolatedTrackLines.push(line);
+    }
+
+    function addSunTransitionMarker(position, date, isSunset) {
+      const pad = value => String(value).padStart(2, "0");
+      const timeText = `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
+      const markerColor = isSunset ? "#000000" : "#ff9800";
+      const marker = L.circleMarker(position, {
+        radius: 7,
+        color: markerColor,
+        fillColor: isSunset ? "#333333" : "#ffe066",
+        fillOpacity: 0.95,
+        weight: 3,
+        interactive: false,
+        pane: "shadowPane"
+      }).addTo(map);
+      marker.bindTooltip(`${timeText} UTC`, {
+        permanent: true,
+        direction: "top",
+        offset: [0, -6],
+        className: "sun-transition-label"
+      });
+      extrapolatedSunMarkers.push(marker);
+    }
+
+    function updateExtrapolatedTrack() {
+      clearExtrapolatedTrack();
+      if (!showLinearForecast) return;
+      if (!lastKnownGpsData) return;
+
+      const course = Number.parseFloat(lastKnownGpsData.gps_course);
+      const speedKnots = Number.parseFloat(lastKnownGpsData.gps_speed);
+      if (!Number.isFinite(course) || !Number.isFinite(speedKnots) || speedKnots <= 0) return;
+
+      const start = L.latLng(lastKnownGpsData.gps_lat, lastKnownGpsData.gps_lng);
+      const end = getVisibleTrackEnd(start, course);
+      if (!end) return;
 
       const speedMetersPerSecond = speedKnots * 0.514444;
       const now = new Date();
+      const totalDistance = map.distance(start, end);
+      const totalSeconds = totalDistance / speedMetersPerSecond;
+      const sampleInterval = 5 * 60;
+      let segmentPoints = [start];
+      let segmentIsDaylight = solarElevation(now, start.lat, start.lng) >= 0;
+
+      for (let seconds = sampleInterval; seconds < totalSeconds; seconds += sampleInterval) {
+        const position = destinationPoint(start, speedMetersPerSecond * seconds, course);
+        const isDaylight = solarElevation(new Date(now.getTime() + seconds * 1000), position.lat, position.lng) >= 0;
+        if (isDaylight !== segmentIsDaylight) {
+          let transitionStart = seconds - sampleInterval;
+          let transitionEnd = seconds;
+          for (let iteration = 0; iteration < 10; iteration++) {
+            const transitionSeconds = (transitionStart + transitionEnd) / 2;
+            const transitionPosition = destinationPoint(start, speedMetersPerSecond * transitionSeconds, course);
+            const transitionIsDaylight = solarElevation(
+              new Date(now.getTime() + transitionSeconds * 1000),
+              transitionPosition.lat,
+              transitionPosition.lng
+            ) >= 0;
+            if (transitionIsDaylight === segmentIsDaylight) {
+              transitionStart = transitionSeconds;
+            } else {
+              transitionEnd = transitionSeconds;
+            }
+          }
+          const transitionPosition = destinationPoint(start, speedMetersPerSecond * transitionEnd, course);
+          addSunTransitionMarker(
+            transitionPosition,
+            new Date(now.getTime() + transitionEnd * 1000),
+            segmentIsDaylight
+          );
+          addExtrapolatedLineSegment(segmentPoints.concat(transitionPosition), segmentIsDaylight);
+          segmentPoints = [transitionPosition, position];
+          segmentIsDaylight = isDaylight;
+        } else {
+          segmentPoints.push(position);
+        }
+      }
+      segmentPoints.push(end);
+      addExtrapolatedLineSegment(segmentPoints, segmentIsDaylight);
+
       const nextHour = new Date(now);
       nextHour.setUTCMinutes(0, 0, 0);
       if (nextHour <= now) nextHour.setUTCHours(nextHour.getUTCHours() + 1);
@@ -1466,7 +1970,7 @@
         const hourMarker = L.marker(hourPosition, {
           icon: L.divIcon({
             className: "",
-            html: `<div style="transform:translate(-50%,-50%);font-size:1.05em;font-weight:bold;color:#ffe066;line-height:1.1;text-shadow:0 1px 2px #000,0 0 4px #000;white-space:nowrap;">${hourText}</div>`,
+            html: `<div style="transform:translate(-50%,-50%);font-size:1.2em;font-weight:bold;color:#ffe066;line-height:1.1;text-shadow:0 1px 2px #000,0 0 4px #000;white-space:nowrap;">${hourText}</div>`,
             iconSize: [0, 0],
             iconAnchor: [0, 0]
           }),
@@ -1500,6 +2004,10 @@
     });
 
     map.on('moveend zoomend', updateExtrapolatedTrack);
+    map.on('zoomend', () => {
+      updateIconEuTrajectory(false);
+      renderAllCustomForecasts();
+    });
 
     // --- ADSBexchange REST-API Live Traffic ---
     let adsbMarkers = [];
@@ -1700,8 +2208,13 @@
     function updateMap(data) {
       if (!data.gps_lat || !data.gps_lng || isNaN(data.gps_lat) || isNaN(data.gps_lng)) return;
 
-      latestGpsData = data;
+      lastKnownGpsData = data;
       updateExtrapolatedTrack();
+      if (lastIconEuRequest === 0) {
+        lastIconEuRequest = Date.now();
+        updateIconEuTrajectory();
+        updateCustomForecasts();
+      }
 
       trackCoords.push([data.gps_lat, data.gps_lng]);
       if (trackCoords.length > 500) trackCoords.shift();
@@ -1773,6 +2286,12 @@
     }
     setInterval(fetchAndUpdate, 2000);
     fetchAndUpdate();
+    setInterval(() => {
+      if (!lastKnownGpsData) return;
+      lastIconEuRequest = Date.now();
+      updateIconEuTrajectory();
+      updateCustomForecasts();
+    }, 10 * 60 * 1000);
 
     map.on('dblclick', function(e) {
       const lat = e.latlng.lat.toFixed(6);
@@ -2066,7 +2585,7 @@
           // Trajektorien-Daten laden (nur aus trajData!)
           if (Array.isArray(data.trajData) && data.trajData.length > 0) {
             data.trajData.forEach(track => {
-              const poly = L.polyline(track.latlngs, {color: track.color || "#00bfff", weight: 4, opacity: 0.9, interactive: true});
+              const poly = L.polyline(track.latlngs, {color: track.color || "#00bfff", weight: 5, opacity: 1, interactive: true});
               poly.addTo(map);
 
               // Popup-Logik hinzufügen (wie in handleGpx)
