@@ -72,6 +72,12 @@ if (!is_array($forecast) || !isset($forecast['hourly']['time'])) {
 
 $times = $forecast['hourly']['time'];
 $timeStamps = array_map('strtotime', $times);
+$forecastValidIndex = 0;
+foreach ($timeStamps as $index => $forecastTimestamp) {
+    if ($forecastTimestamp <= $startTime) {
+        $forecastValidIndex = $index;
+    }
+}
 
 function interpolateSeries(array $values, array $timeStamps, int $timestamp): float {
     $lastIndex = count($timeStamps) - 1;
@@ -158,6 +164,8 @@ for ($seconds = $stepSeconds; $seconds <= $durationHours * 3600; $seconds += $st
 
 echo json_encode([
     'model' => $model,
+    'source_fetched_at' => gmdate('c'),
+    'forecast_valid_from' => $times[$forecastValidIndex] ?? null,
     'pressure' => round($pressure, 1),
     'pressure_levels' => [$lowerPressure, $upperPressure],
     'points' => $points

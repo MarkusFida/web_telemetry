@@ -202,7 +202,7 @@
     }
     .custom-forecast-row {
       display: grid;
-      grid-template-columns: 24px 1fr 58px 14px 90px 48px 42px;
+      grid-template-columns: 24px 1fr 58px 14px 90px 48px 58px;
       align-items: center;
       gap: 6px;
       margin-top: 5px;
@@ -525,6 +525,7 @@
       <div style="font-weight:bold;">Live forecast altitudes (ft) / duration (h):</div>
       <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
         <span>Live forecast:</span>
+        <input id="menu-live-forecast-checkbox" type="checkbox" checked title="Show live forecast">
         <input id="live-forecast-duration" type="number" value="24" min="1" max="48" step="1" title="Live forecast duration in hours" style="width:58px;background:#111;color:#ffe066;border:1px solid #555;border-radius:4px;padding:3px 5px;">
         <span>h</span>
         <select id="live-forecast-model" title="Live forecast weather model" style="width:90px;background:#111;color:#ffe066;border:1px solid #555;border-radius:4px;padding:3px 2px;">
@@ -539,6 +540,12 @@
           Refresh
         </label>
       </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+        <span>Linear forecast:</span>
+        <input id="menu-linear-forecast-checkbox" type="checkbox" checked title="Show linear forecast">
+        <input id="menu-linear-forecast-duration" type="number" value="24" min="1" max="48" step="1" title="Linear forecast duration in hours" style="width:58px;background:#111;color:#ffe066;border:1px solid #555;border-radius:4px;padding:3px 5px;">
+        <span>h</span>
+      </div>
       <div class="custom-forecast-row">
         <input type="checkbox" class="custom-forecast-enabled" checked>
         <input type="number" class="custom-forecast-altitude" value="1640" min="0" max="65617" step="100" title="Altitude in feet">
@@ -548,7 +555,7 @@
           <option value="gfs_seamless">GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu" selected>ICON-EU</option><option value="icon_d2">ICON-D2</option>
         </select>
         <input type="color" class="custom-forecast-color" value="#00bfff" title="Trajectory color">
-        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
+        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
       </div>
       <div class="custom-forecast-row">
         <input type="checkbox" class="custom-forecast-enabled" checked>
@@ -559,7 +566,7 @@
           <option value="gfs_seamless">GFS</option><option value="icon_seamless" selected>ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu">ICON-EU</option><option value="icon_d2">ICON-D2</option>
         </select>
         <input type="color" class="custom-forecast-color" value="#ff9800" title="Trajectory color">
-        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
+        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
       </div>
       <div class="custom-forecast-row">
         <input type="checkbox" class="custom-forecast-enabled" checked>
@@ -570,7 +577,7 @@
           <option value="gfs_seamless">GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025" selected>ECMWF OpenIFS</option><option value="icon_eu">ICON-EU</option><option value="icon_d2">ICON-D2</option>
         </select>
         <input type="color" class="custom-forecast-color" value="#ff00cc" title="Trajectory color">
-        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
+        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
       </div>
       <div class="custom-forecast-row">
         <input type="checkbox" class="custom-forecast-enabled" checked>
@@ -581,7 +588,7 @@
           <option value="gfs_seamless">GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu" selected>ICON-EU</option><option value="icon_d2">ICON-D2</option>
         </select>
         <input type="color" class="custom-forecast-color" value="#00ff44" title="Trajectory color">
-        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
+        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
       </div>
       <div class="custom-forecast-row">
         <input type="checkbox" class="custom-forecast-enabled" checked>
@@ -592,7 +599,7 @@
           <option value="gfs_seamless">GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu">ICON-EU</option><option value="icon_d2" selected>ICON-D2</option>
         </select>
         <input type="color" class="custom-forecast-color" value="#ffd600" title="Trajectory color">
-        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
+        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
       </div>
       <button id="custom-forecast-apply" style="margin-top:8px;background:#333;color:#ffe066;border-radius:6px;padding:4px 10px;border:none;cursor:pointer;font-weight:bold;width:100%;">Calculate forecast</button>
     </div>
@@ -632,6 +639,11 @@
           <span>Live</span>
         </label>
       </div>
+      <label style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <span>Linear forecast:</span>
+        <input id="linear-forecast-duration" type="number" value="24" min="1" max="48" step="1" style="width:58px;background:#111;color:#ffe066;border:1px solid #444;border-radius:6px;padding:3px 6px;">
+        <span>h</span>
+      </label>
       <button id="track-range-apply" style="background:#333;color:#ffe066;border-radius:6px;padding:4px 10px;border:none;cursor:pointer;font-weight:bold;align-self:stretch;">Show</button>
     </div>
   </div>
@@ -721,10 +733,14 @@
     let cachedIconEuPoints = null;
     let liveForecastDuration = 24;
     let liveForecastModel = 'icon_eu';
+    let liveForecastSource = { model: liveForecastModel, fetchedAt: null, forecastValidFrom: null, modelRun: null };
     let liveForecastAutoRefresh = true;
+    let liveForecastNextRefresh = 0;
+    let customForecastNextRefresh = [];
     let customForecasts = [];
     let lastIconEuRequest = 0;
     let showLinearForecast = true;
+    let linearForecastDuration = 24;
     let showIconEuForecast = true;
     let lastKnownGpsData = null;
     let lastKnownCourse = 0;
@@ -819,45 +835,8 @@
         const forecastDiv = document.createElement('div');
         forecastDiv.style.marginTop = "4px";
         forecastDiv.innerHTML = `
-          <label style="color:#222;font-size:1em;cursor:pointer;display:flex;align-items:center;">
-            <input type="checkbox" id="linear-forecast-checkbox" style="margin-right:6px;" checked>
-            Linear forecast
-          </label>
-          <label style="color:#222;font-size:1em;cursor:pointer;display:flex;align-items:center;">
-            <input type="checkbox" id="icon-eu-forecast-checkbox" style="margin-right:6px;" checked>
-            ICON-EU live trajectory
-          </label>
         `;
         openaipLabel.parentNode.insertBefore(forecastDiv, trajDiv.nextSibling);
-
-        const savedLinearForecast = localStorage.getItem('showLinearForecast');
-        const savedIconEuForecast = localStorage.getItem('showIconEuForecast');
-        const linearForecastCheckbox = forecastDiv.querySelector('#linear-forecast-checkbox');
-        const iconEuForecastCheckbox = forecastDiv.querySelector('#icon-eu-forecast-checkbox');
-        if (savedLinearForecast !== null) linearForecastCheckbox.checked = savedLinearForecast === 'true';
-        if (savedIconEuForecast !== null) iconEuForecastCheckbox.checked = savedIconEuForecast === 'true';
-        showLinearForecast = linearForecastCheckbox.checked;
-        showIconEuForecast = iconEuForecastCheckbox.checked;
-
-        linearForecastCheckbox.addEventListener('change', function() {
-          showLinearForecast = this.checked;
-          localStorage.setItem('showLinearForecast', String(showLinearForecast));
-          if (showLinearForecast) {
-            updateExtrapolatedTrack();
-          } else {
-            clearExtrapolatedTrack();
-          }
-        });
-
-        iconEuForecastCheckbox.addEventListener('change', function() {
-          showIconEuForecast = this.checked;
-          localStorage.setItem('showIconEuForecast', String(showIconEuForecast));
-          if (showIconEuForecast) {
-            updateIconEuTrajectory();
-          } else {
-            clearIconEuTrajectory();
-          }
-        });
 
         // ADSB checkbox event handler removed - ADSB is disabled
         const trajToggleCheckbox = trajDiv.querySelector('#traj-toggle-checkbox');
@@ -1612,10 +1591,10 @@
         fillColor: isSunset ? "#333" : "#ffe066",
         fillOpacity: 0.95,
         weight: 3,
-        interactive: false
+        interactive: true
       }).addTo(map);
       marker.bindTooltip(timeText, {
-        permanent: true,
+        permanent: false,
         direction: "top",
         offset: [0, -6]
       });
@@ -1695,6 +1674,20 @@
       markerCollection.push(marker);
     }
 
+    function addTrajectoryAltitudeMarker(point, altitudeText, color, markerCollection, side) {
+      const offset = side < 0 ? "translateX(-18px)" : "translateX(18px)";
+      const marker = L.marker([point.lat, point.lon], {
+        icon: L.divIcon({
+          className: "",
+          html: `<div style="transform:translate(-50%,-50%) ${offset};font-size:0.95em;font-weight:bold;color:${color};opacity:0.9;text-shadow:0 1px 2px #000,0 0 4px #000;white-space:nowrap;">${altitudeText}</div>`,
+          iconSize: [0, 0],
+          iconAnchor: [0, 0]
+        }),
+        interactive: false
+      }).addTo(map);
+      markerCollection.push(marker);
+    }
+
     function updateIconEuTrajectory(forceFetch = true) {
       clearIconEuTrajectory();
       if (!showIconEuForecast) return;
@@ -1717,11 +1710,14 @@
         model: liveForecastModel,
         time: new Date().toISOString()
       });
+      liveForecastNextRefresh = Date.now();
+      updateForecastRefreshLabels();
       fetch(`icon_eu_trajectory.php?${params}`)
         .then(response => response.json())
         .then(data => {
           if (!Array.isArray(data.points) || data.points.length < 2) return;
           cachedIconEuPoints = data.points;
+          liveForecastSource = { model: data.model || liveForecastModel, fetchedAt: data.source_fetched_at || null, forecastValidFrom: data.forecast_valid_from || null, modelRun: data.model_run_time || null };
           renderIconEuTrajectory(cachedIconEuPoints);
         })
         .catch(error => console.warn("ICON-EU-Trajektorie nicht verfügbar:", error));
@@ -1744,7 +1740,10 @@
                 weight: 5,
                 opacity: 1,
                 dashArray: "2 6",
-                interactive: false
+                interactive: true
+              }).bindTooltip(liveForecastLineTooltip(liveForecastNextRefresh, liveForecastSource), {
+                direction: "top",
+                sticky: true
               }).addTo(map);
               iconEuTrajectoryLine = iconEuTrajectoryLine || L.layerGroup().addTo(map);
               iconEuTrajectoryLine.addLayer(line);
@@ -1759,13 +1758,20 @@
             weight: 5,
             opacity: 1,
             dashArray: "2 6",
-            interactive: false
+            interactive: true
+          }).bindTooltip(liveForecastLineTooltip(liveForecastNextRefresh, liveForecastSource), {
+            direction: "top",
+            sticky: true
           }).addTo(map);
           iconEuTrajectoryLine = iconEuTrajectoryLine || L.layerGroup().addTo(map);
           iconEuTrajectoryLine.addLayer(finalLine);
 
           getFullHourPoints(visiblePoints).forEach(point => {
             addTrajectoryHourMarker(point, "#00e5ff", iconEuTrajectoryMarkers);
+          });
+          visiblePoints.forEach((point, pointIndex) => {
+            if (pointIndex === 0 || pointIndex % 18 !== 9) return;
+            addTrajectoryAltitudeMarker(point, `${Math.round(getLiveBarometricAltitudeFeet()).toLocaleString("en-US")} ft`, "#00e5ff", iconEuTrajectoryMarkers, pointIndex % 36 === 9 ? 1 : -1);
           });
     }
 
@@ -1795,6 +1801,7 @@
           points: previous.points || null,
           layerGroup: previous.layerGroup || null,
           markers: previous.markers || [],
+          source: previous.source || { model: null, fetchedAt: null, forecastValidFrom: null, modelRun: null },
           sunMarkers: previous.sunMarkers || []
         };
       });
@@ -1893,7 +1900,10 @@
             weight: 5,
             opacity: 1,
             dashArray: "2 6",
-            interactive: false
+            interactive: true
+              }).bindTooltip(forecastLineTooltip(forecast.altitude, customForecastNextRefresh[forecast.index], forecast.source), {
+            direction: "top",
+            sticky: true
           }).addTo(forecast.layerGroup);
           segmentPoints = [point];
           segmentIsDaylight = isDaylight;
@@ -1906,10 +1916,18 @@
         weight: 5,
         opacity: 1,
         dashArray: "2 6",
-        interactive: false
+        interactive: true
+      }).bindTooltip(forecastLineTooltip(forecast.altitude, customForecastNextRefresh[forecast.index], forecast.source), {
+        direction: "top",
+        sticky: true
       }).addTo(forecast.layerGroup);
       getFullHourPoints(forecast.points).forEach(point => {
         addTrajectoryHourMarker(point, forecast.color, forecast.markers);
+      });
+      forecast.points.forEach((point, pointIndex) => {
+        if (pointIndex === 0 || pointIndex % 18 !== 9) return;
+        const altitudeText = `${Math.round(forecast.altitude).toLocaleString("en-US")} ft`;
+        addTrajectoryAltitudeMarker(point, altitudeText, forecast.color, forecast.markers, pointIndex % 36 === 9 ? 1 : -1);
       });
 
       let previousDaylight = solarElevation(
@@ -1931,10 +1949,10 @@
           fillColor: daylight ? "#ffe066" : "#444",
           fillOpacity: 0.95,
           weight: 3,
-          interactive: false
+          interactive: true
         }).addTo(map);
         sunMarker.bindTooltip(timeText, {
-          permanent: true,
+          permanent: false,
           direction: "top",
           offset: [0, -6]
         });
@@ -1956,6 +1974,7 @@
 
       const requests = customForecasts.map(forecast => {
         if (!forecast.enabled || !Number.isFinite(forecast.altitude) || (!forecast.autoRefresh && !forceManual)) return Promise.resolve(null);
+        customForecastNextRefresh[forecast.index] = Date.now();
         const params = new URLSearchParams({
           lat: lastKnownGpsData.gps_lat,
           lon: lastKnownGpsData.gps_lng,
@@ -1968,7 +1987,7 @@
         });
         return fetch(`icon_eu_trajectory.php?${params}`)
           .then(response => response.json())
-          .then(data => Array.isArray(data.points) ? data.points : null)
+          .then(data => Array.isArray(data.points) ? { points: data.points, source: { model: data.model || forecast.model, fetchedAt: data.source_fetched_at || null, forecastValidFrom: data.forecast_valid_from || null, modelRun: data.model_run_time || null } } : null)
           .catch(error => {
             console.warn(`Forecast at ${forecast.altitude} ft unavailable:`, error);
             return null;
@@ -1977,9 +1996,87 @@
 
       Promise.all(requests).then(pointSets => {
         pointSets.forEach((points, index) => {
-          if (points) customForecasts[index].points = points;
+          if (points) {
+            customForecasts[index].points = points.points;
+            customForecasts[index].source = points.source;
+          }
         });
         renderAllCustomForecasts();
+      });
+    }
+
+    function formatRefreshTime(timestamp) {
+      if (!timestamp) return "last --:--";
+      const date = new Date(timestamp);
+      return `last ${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(2, "0")} UTC`;
+    }
+
+    function formatSourceTime(timestamp) {
+      if (!timestamp) return "--";
+      const date = new Date(timestamp);
+      return `${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(2, "0")} UTC`;
+    }
+
+    function formatModelRun(source) {
+      return source?.modelRun ? formatSourceTime(source.modelRun) : "not provided by API";
+    }
+
+    function formatForecastValidFrom(source) {
+      return source?.forecastValidFrom ? formatSourceTime(source.forecastValidFrom) : "--";
+    }
+
+    function forecastLineTooltip(altitudeFeet, refreshTimestamp, source) {
+      return `<b>Altitude:</b> ${Math.round(altitudeFeet).toLocaleString("en-US")} ft<br><b>Last refresh:</b> ${formatRefreshTime(refreshTimestamp)}<br><b>Model:</b> ${source?.model || "--"}<br><b>Model run:</b> ${formatModelRun(source)}<br><b>Forecast valid from:</b> ${formatForecastValidFrom(source)}<br><b>Source fetched:</b> ${formatSourceTime(source?.fetchedAt)}`;
+    }
+
+    function formatAltitudeBothUnits(feet) {
+      const roundedFeet = Math.round(feet);
+      const meters = Math.round(feet * 0.3048);
+      return `${roundedFeet.toLocaleString("en-US")} ft (${meters.toLocaleString("en-US")} m)`;
+    }
+
+    function formatFlightLevelAndMeters(feet) {
+      const numericFeet = Number(feet);
+      if (!Number.isFinite(numericFeet)) return "--";
+      const flightLevel = Math.max(0, Math.round(numericFeet / 100));
+      const meters = Math.round(numericFeet * 0.3048);
+      return `${Math.round(numericFeet).toLocaleString("en-US")} ft, ${meters.toLocaleString("en-US")} m (FL${String(flightLevel).padStart(3, "0")})`;
+    }
+
+    function formatGroundElevation(meters) {
+      if (!Number.isFinite(Number(meters))) return "--";
+      return formatAltitudeBothUnits(Number(meters) * 3.28084);
+    }
+
+    function liveForecastLineTooltip(refreshTimestamp, source) {
+      const qnh = lastKnownGpsData && lastKnownGpsData.qnh ? lastKnownGpsData.qnh : "--";
+      return `<b>Baro altitude (QNH ${qnh}):</b> ${formatAltitudeBothUnits(getLiveConfiguredBarometricAltitudeFeet())}<br><b>Baro altitude (QNH 1013):</b> ${formatFlightLevelAndMeters(getLiveBarometricAltitudeFeet())}<br><b>Last refresh:</b> ${formatRefreshTime(refreshTimestamp)}<br><b>Model:</b> ${source?.model || "--"}<br><b>Model run:</b> ${formatModelRun(source)}<br><b>Forecast valid from:</b> ${formatForecastValidFrom(source)}<br><b>Source fetched:</b> ${formatSourceTime(source?.fetchedAt)}`;
+    }
+
+    function getLiveBarometricAltitudeFeet() {
+      const barometricFeet = Number(lastKnownGpsData && lastKnownGpsData.hoehe_ft);
+      if (Number.isFinite(barometricFeet)) {
+        const qnh = Number(lastKnownGpsData && lastKnownGpsData.qnh);
+        return Number.isFinite(qnh) ? barometricFeet - (qnh - 1013) * 27 : barometricFeet;
+      }
+      const gpsMeters = Number(lastKnownGpsData && lastKnownGpsData.gps_alt);
+      return Number.isFinite(gpsMeters) ? gpsMeters * 3.28084 : 0;
+    }
+
+    function getLiveConfiguredBarometricAltitudeFeet() {
+      const barometricFeet = Number(lastKnownGpsData && lastKnownGpsData.hoehe_ft);
+      return Number.isFinite(barometricFeet) ? barometricFeet : getLiveBarometricAltitudeFeet();
+    }
+
+    function updateForecastRefreshLabels() {
+      const liveLabel = document.getElementById('live-forecast-next-refresh');
+      if (liveLabel) liveLabel.textContent = showIconEuForecast ? formatRefreshTime(liveForecastNextRefresh) : "off";
+      document.querySelectorAll('.custom-forecast-row').forEach((row, index) => {
+        const label = row.querySelector('.custom-forecast-next-refresh');
+        const enabled = row.querySelector('.custom-forecast-enabled');
+        const autoRefresh = row.querySelector('.custom-forecast-auto');
+        if (!label || !enabled || !autoRefresh) return;
+        label.textContent = enabled.checked ? formatRefreshTime(customForecastNextRefresh[index]) : "off";
       });
     }
 
@@ -2016,8 +2113,11 @@
     });
     loadCustomForecastSettings();
     loadLiveForecastDuration();
+    loadLinearForecastDuration();
     loadLiveForecastModel();
     loadLiveForecastAutoRefresh();
+    updateForecastRefreshLabels();
+    setInterval(updateForecastRefreshLabels, 1000);
 
     function getVisibleTrackEnd(startLatLng, course) {
       const startPoint = map.latLngToContainerPoint(startLatLng);
@@ -2115,7 +2215,7 @@
         pane: "shadowPane"
       }).addTo(map);
       marker.bindTooltip(`${timeText} UTC`, {
-        permanent: true,
+        permanent: false,
         direction: "top",
         offset: [0, -6],
         className: "sun-transition-label"
@@ -2133,11 +2233,13 @@
       if (!Number.isFinite(course) || !Number.isFinite(speedKnots) || speedKnots <= 0) return;
 
       const start = L.latLng(lastKnownGpsData.gps_lat, lastKnownGpsData.gps_lng);
-      const end = getVisibleTrackEnd(start, course);
-      if (!end) return;
+      const edgeEnd = getVisibleTrackEnd(start, course);
+      if (!edgeEnd) return;
 
       const speedMetersPerSecond = speedKnots * 0.514444;
       const now = new Date();
+      const durationEnd = destinationPoint(start, speedMetersPerSecond * linearForecastDuration * 3600, course);
+      const end = map.distance(start, durationEnd) < map.distance(start, edgeEnd) ? durationEnd : edgeEnd;
       const totalDistance = map.distance(start, end);
       const totalSeconds = totalDistance / speedMetersPerSecond;
       const sampleInterval = 5 * 60;
@@ -2184,7 +2286,7 @@
       nextHour.setUTCMinutes(0, 0, 0);
       if (nextHour <= now) nextHour.setUTCHours(nextHour.getUTCHours() + 1);
 
-      for (let hour = nextHour; hour <= new Date(now.getTime() + 24 * 60 * 60 * 1000); hour = new Date(hour.getTime() + 60 * 60 * 1000)) {
+      for (let hour = nextHour; hour <= new Date(now.getTime() + linearForecastDuration * 60 * 60 * 1000); hour = new Date(hour.getTime() + 60 * 60 * 1000)) {
         const secondsFromNow = (hour - now) / 1000;
         const hourPosition = destinationPoint(start, speedMetersPerSecond * secondsFromNow, course);
         if (!map.getBounds().contains(hourPosition)) break;
@@ -2202,6 +2304,22 @@
         }).addTo(map);
         extrapolatedHourMarkers.push(hourMarker);
       }
+    }
+
+    function saveLinearForecastDuration() {
+      const input = document.getElementById('linear-forecast-duration');
+      linearForecastDuration = Math.max(1, Math.min(48, Number(input.value) || 24));
+      input.value = linearForecastDuration;
+      document.getElementById('menu-linear-forecast-duration').value = linearForecastDuration;
+      localStorage.setItem('mapLinearForecastDuration', String(linearForecastDuration));
+      updateExtrapolatedTrack();
+    }
+
+    function loadLinearForecastDuration() {
+      const saved = Number(localStorage.getItem('mapLinearForecastDuration'));
+      if (Number.isFinite(saved) && saved >= 1 && saved <= 48) linearForecastDuration = saved;
+      document.getElementById('linear-forecast-duration').value = linearForecastDuration;
+      document.getElementById('menu-linear-forecast-duration').value = linearForecastDuration;
     }
 
     function centerOnGps() {
@@ -2438,6 +2556,7 @@
       data.gps_course = lastKnownCourse;
       data.gps_speed = lastKnownSpeed;
       lastKnownGpsData = data;
+      const barometricAltitudeFeet = getLiveBarometricAltitudeFeet();
       updateExtrapolatedTrack();
       if (lastIconEuRequest === 0) {
         lastIconEuRequest = Date.now();
@@ -2463,9 +2582,9 @@
 
       let popupText = `
         <b>Time (UTC):</b> ${data.zeit}<br>
-        <b>Altitude (ft):</b> ${data.hoehe_ft}<br>
-        <b>Altitude (m):</b> ${data.hoehe_m}<br>
-        <b>GPS Altitude:</b> ${data.gps_alt}<br>
+        <b>Baro altitude (QNH ${data.qnh}):</b> ${formatAltitudeBothUnits(getLiveConfiguredBarometricAltitudeFeet())}<br>
+        <b>Baro altitude (QNH 1013):</b> ${formatFlightLevelAndMeters(barometricAltitudeFeet)}<br>
+        <b>GPS altitude:</b> ${formatAltitudeBothUnits(Number(data.gps_alt) * 3.28084)}<br>
         <b>GND elev.:</b> ${geoHeight}<br>
         <b>Speed (kt):</b> ${data.gps_speed}<br>
         <b>Course:</b> ${data.gps_course}<br>
@@ -2488,13 +2607,13 @@
 
       // GND Elevation asynchron holen und Popup aktualisieren
       fetchGroundElevation(data.gps_lat, data.gps_lng, function(groundElevation) {
-        geoHeight = groundElevation !== null ? groundElevation.toFixed(1) + " m" : "--";
+        geoHeight = formatGroundElevation(groundElevation);
         if (marker) {
           let popupText = `
             <b>Time (UTC):</b> ${data.zeit}<br>
-            <b>Altitude (ft):</b> ${data.hoehe_ft}<br>
-            <b>Altitude (m):</b> ${data.hoehe_m}<br>
-            <b>GPS Altitude:</b> ${data.gps_alt}<br>
+            <b>Baro altitude (QNH ${data.qnh}):</b> ${formatAltitudeBothUnits(getLiveConfiguredBarometricAltitudeFeet())}<br>
+            <b>Baro altitude (QNH 1013):</b> ${formatFlightLevelAndMeters(getLiveBarometricAltitudeFeet())}<br>
+            <b>GPS altitude:</b> ${formatAltitudeBothUnits(Number(data.gps_alt) * 3.28084)}<br>
             <b>GND elev.:</b> ${geoHeight}<br>
             <b>Speed (kt):</b> ${data.gps_speed}<br>
             <b>Course:</b> ${data.gps_course}<br>
@@ -2717,6 +2836,37 @@
     trackFromInput.addEventListener('change', saveMapSettingsLocally);
     trackToInput.addEventListener('change', saveMapSettingsLocally);
     trackToLiveCheckbox.addEventListener('change', saveMapSettingsLocally);
+    document.getElementById('linear-forecast-duration').addEventListener('change', saveLinearForecastDuration);
+    const menuLinearForecastCheckbox = document.getElementById('menu-linear-forecast-checkbox');
+    const savedLinearForecast = localStorage.getItem('showLinearForecast');
+    if (savedLinearForecast !== null) menuLinearForecastCheckbox.checked = savedLinearForecast === 'true';
+    showLinearForecast = menuLinearForecastCheckbox.checked;
+    menuLinearForecastCheckbox.addEventListener('change', function() {
+      showLinearForecast = this.checked;
+      localStorage.setItem('showLinearForecast', String(showLinearForecast));
+      if (showLinearForecast) {
+        updateExtrapolatedTrack();
+      } else {
+        clearExtrapolatedTrack();
+      }
+    });
+    const menuLiveForecastCheckbox = document.getElementById('menu-live-forecast-checkbox');
+    const savedIconEuForecast = localStorage.getItem('showIconEuForecast');
+    if (savedIconEuForecast !== null) menuLiveForecastCheckbox.checked = savedIconEuForecast === 'true';
+    showIconEuForecast = menuLiveForecastCheckbox.checked;
+    menuLiveForecastCheckbox.addEventListener('change', function() {
+      showIconEuForecast = this.checked;
+      localStorage.setItem('showIconEuForecast', String(showIconEuForecast));
+      if (showIconEuForecast) {
+        updateIconEuTrajectory();
+      } else {
+        clearIconEuTrajectory();
+      }
+    });
+    document.getElementById('menu-linear-forecast-duration').addEventListener('change', function() {
+      document.getElementById('linear-forecast-duration').value = this.value;
+      saveLinearForecastDuration();
+    });
 
     // Export-Funktion
     document.getElementById('export-settings-btn').addEventListener('click', function() {
@@ -3015,7 +3165,7 @@
     map.on('contextmenu', function(e) {
       e.originalEvent.preventDefault(); // Standard-Kontextmenü verhindern
       fetchGroundElevation(e.latlng.lat, e.latlng.lng, function(elevation) {
-        const elevationText = elevation !== null ? `${elevation.toFixed(1)} m` : '-- m';
+        const elevationText = formatGroundElevation(elevation);
         L.popup()
           .setLatLng(e.latlng)
           .setContent(`<b>Ground Elevation:</b> ${elevationText}`)

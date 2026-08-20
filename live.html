@@ -299,7 +299,7 @@
           <div class="med"><span id="hoehe_m">----</span> m</div>
           <div class="row">
             <span class="label">GPS Alt</span>
-            <span class="value" id="gps_alt">----</span> <span class="unit-big">m</span>
+            <span class="value" id="gps_alt">----</span>
           </div>
           <div class="row">
             <span class="label">Track</span>
@@ -386,6 +386,26 @@
         .catch(() => callback(null));
     }
 
+    function formatAltitudeBothUnits(feet) {
+      const numericFeet = Number(feet);
+      if (!Number.isFinite(numericFeet)) return "--";
+      return `${Math.round(numericFeet).toLocaleString("en-US")} ft (${Math.round(numericFeet * 0.3048).toLocaleString("en-US")} m)`;
+    }
+
+    function formatFlightLevelAndMeters(feet) {
+      const numericFeet = Number(feet);
+      if (!Number.isFinite(numericFeet)) return "--";
+      const flightLevel = Math.max(0, Math.round(numericFeet / 100));
+      return `${Math.round(numericFeet).toLocaleString("en-US")} ft, ${Math.round(numericFeet * 0.3048).toLocaleString("en-US")} m (FL${String(flightLevel).padStart(3, "0")})`;
+    }
+
+    function getBaroAltitudeAtQnh1013(data) {
+      const barometricFeet = Number(data.hoehe_ft);
+      const qnh = Number(data.qnh);
+      if (!Number.isFinite(barometricFeet)) return NaN;
+      return Number.isFinite(qnh) ? barometricFeet - (qnh - 1013) * 27 : barometricFeet;
+    }
+
     function gpsColor(sats) {
       if (sats >= 7) return "#baff00";
       else if (sats >= 4) return "#ffb300";
@@ -395,9 +415,9 @@
     function updateDisplay(data) {
       document.getElementById('zeit').textContent = data.zeit;
       document.getElementById('qnh').textContent = "QNH " + data.qnh;
-      document.getElementById('hoehe_ft').textContent = data.hoehe_ft;
-      document.getElementById('hoehe_m').textContent = data.hoehe_m;
-      document.getElementById('gps_alt').textContent = data.gps_alt;
+      document.getElementById('hoehe_ft').textContent = Number.isFinite(Number(data.hoehe_ft)) ? Math.round(Number(data.hoehe_ft)).toLocaleString("en-US") : "----";
+      document.getElementById('hoehe_m').textContent = Number.isFinite(Number(data.hoehe_ft)) ? Math.round(Number(data.hoehe_ft) * 0.3048).toLocaleString("en-US") : "----";
+      document.getElementById('gps_alt').textContent = Number.isFinite(Number(data.gps_alt)) ? `${Math.round(Number(data.gps_alt) * 3.28084).toLocaleString("en-US")} ft (${Math.round(Number(data.gps_alt)).toLocaleString("en-US")} m)` : "----";
       document.getElementById('gps_course').textContent = data.gps_course;
       document.getElementById('gps_speed').textContent = data.gps_speed;
       document.getElementById('peak').textContent = data.peak;
@@ -565,14 +585,15 @@
       getGroundElevation(data.gps_lat, data.gps_lng, function(groundElevation) {
         let geoHeight = "--";
         if (groundElevation !== null) {
-          geoHeight = groundElevation.toFixed(1) + " m";
+          geoHeight = formatAltitudeBothUnits(groundElevation * 3.28084);
         }
 
         const popupText = `
           <div style="min-width:260px;font-size:1.25em;">
             <b>Time (UTC):</b> ${data.zeit}<br>
-            <b>GPS Alt:</b> ${data.gps_alt} m<br>
-            <b>Baro Alt:</b> ${data.hoehe_ft} ft<br>
+            <b>GPS Alt:</b> ${formatAltitudeBothUnits(Number(data.gps_alt) * 3.28084)}<br>
+            <b>Baro Alt (QNH ${data.qnh}):</b> ${formatAltitudeBothUnits(Number(data.hoehe_ft))}<br>
+            <b>Baro Alt (QNH 1013):</b> ${formatFlightLevelAndMeters(getBaroAltitudeAtQnh1013(data))}<br>
             <b>GND elev.:</b> ${geoHeight}<br>
             <b>Speed:</b> ${data.gps_speed} kts<br>
             <b>Vario:</b> ${typeof data.vario !== "undefined" ? data.vario + " m/s" : "--"}<br>
