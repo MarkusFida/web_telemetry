@@ -607,6 +607,9 @@
   <script>
     // Der gesamte JavaScript-Code bleibt unverändert
     let map, marker, trackLine;
+    let extrapolatedTrackLine = null;
+    let extrapolatedHourMarkers = [];
+    let latestGpsData = null;
     let trackCoords = [];
     let trajTracks = [];
     let trajLayers = [];
@@ -1376,6 +1379,104 @@
       }
     }
 
+    function clearExtrapolatedTrack() {
+      if (extrapolatedTrackLine) {
+        map.removeLayer(extrapolatedTrackLine);
+        extrapolatedTrackLine = null;
+      }
+      extrapolatedHourMarkers.forEach(markerLayer => map.removeLayer(markerLayer));
+      extrapolatedHourMarkers = [];
+    }
+
+    function getVisibleTrackEnd(startLatLng, course) {
+      const startPoint = map.latLngToContainerPoint(startLatLng);
+      const angle = course * Math.PI / 180;
+      const direction = { x: Math.sin(angle), y: -Math.cos(angle) };
+      const size = map.getSize();
+      const candidates = [];
+
+      if (direction.x > 0) candidates.push((size.x - startPoint.x) / direction.x);
+      if (direction.x < 0) candidates.push((0 - startPoint.x) / direction.x);
+      if (direction.y > 0) candidates.push((size.y - startPoint.y) / direction.y);
+      if (direction.y < 0) candidates.push((0 - startPoint.y) / direction.y);
+
+      const pixelsToEdge = Math.min(...candidates.filter(value => value > 0));
+      if (!Number.isFinite(pixelsToEdge)) return null;
+
+      return map.containerPointToLatLng({
+        x: startPoint.x + direction.x * pixelsToEdge,
+        y: startPoint.y + direction.y * pixelsToEdge
+      });
+    }
+
+    function destinationPoint(startLatLng, distanceMeters, bearing) {
+      const radius = 6371000;
+      const angularDistance = distanceMeters / radius;
+      const bearingRadians = bearing * Math.PI / 180;
+      const latitude = startLatLng.lat * Math.PI / 180;
+      const longitude = startLatLng.lng * Math.PI / 180;
+      const destinationLatitude = Math.asin(
+        Math.sin(latitude) * Math.cos(angularDistance) +
+        Math.cos(latitude) * Math.sin(angularDistance) * Math.cos(bearingRadians)
+      );
+      const destinationLongitude = longitude + Math.atan2(
+        Math.sin(bearingRadians) * Math.sin(angularDistance) * Math.cos(latitude),
+        Math.cos(angularDistance) - Math.sin(latitude) * Math.sin(destinationLatitude)
+      );
+
+      return L.latLng(
+        destinationLatitude * 180 / Math.PI,
+        ((destinationLongitude * 180 / Math.PI + 540) % 360) - 180
+      );
+    }
+
+    function updateExtrapolatedTrack() {
+      clearExtrapolatedTrack();
+      if (!latestGpsData) return;
+
+      const course = Number.parseFloat(latestGpsData.gps_course);
+      const speedKnots = Number.parseFloat(latestGpsData.gps_speed);
+      if (!Number.isFinite(course) || !Number.isFinite(speedKnots) || speedKnots <= 0) return;
+
+      const start = L.latLng(latestGpsData.gps_lat, latestGpsData.gps_lng);
+      const end = getVisibleTrackEnd(start, course);
+      if (!end) return;
+
+      extrapolatedTrackLine = L.polyline([start, end], {
+        color: "#ff9800",
+        weight: 3,
+        opacity: 0.9,
+        dashArray: "8 7",
+        interactive: false,
+        pane: "shadowPane"
+      }).addTo(map);
+
+      const speedMetersPerSecond = speedKnots * 0.514444;
+      const now = new Date();
+      const nextHour = new Date(now);
+      nextHour.setUTCMinutes(0, 0, 0);
+      if (nextHour <= now) nextHour.setUTCHours(nextHour.getUTCHours() + 1);
+
+      for (let hour = nextHour; hour <= new Date(now.getTime() + 24 * 60 * 60 * 1000); hour = new Date(hour.getTime() + 60 * 60 * 1000)) {
+        const secondsFromNow = (hour - now) / 1000;
+        const hourPosition = destinationPoint(start, speedMetersPerSecond * secondsFromNow, course);
+        if (!map.getBounds().contains(hourPosition)) break;
+
+        const hourText = String(hour.getUTCHours()).padStart(2, "0");
+        const hourMarker = L.marker(hourPosition, {
+          icon: L.divIcon({
+            className: "",
+            html: `<div style="transform:translate(-50%,-50%);font-size:1.05em;font-weight:bold;color:#ffe066;line-height:1.1;text-shadow:0 1px 2px #000,0 0 4px #000;white-space:nowrap;">${hourText}</div>`,
+            iconSize: [0, 0],
+            iconAnchor: [0, 0]
+          }),
+          interactive: false,
+          pane: "shadowPane"
+        }).addTo(map);
+        extrapolatedHourMarkers.push(hourMarker);
+      }
+    }
+
     function centerOnGps() {
       autoCenterGps = true;
       if (marker && marker.getLatLng) {
@@ -1397,6 +1498,8 @@
         autoCenterGps = false;
       }
     });
+
+    map.on('moveend zoomend', updateExtrapolatedTrack);
 
     // --- ADSBexchange REST-API Live Traffic ---
     let adsbMarkers = [];
@@ -1596,6 +1699,9 @@
 
     function updateMap(data) {
       if (!data.gps_lat || !data.gps_lng || isNaN(data.gps_lat) || isNaN(data.gps_lng)) return;
+
+      latestGpsData = data;
+      updateExtrapolatedTrack();
 
       trackCoords.push([data.gps_lat, data.gps_lng]);
       if (trackCoords.length > 500) trackCoords.shift();
