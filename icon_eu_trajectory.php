@@ -8,8 +8,19 @@ $lon = filter_input(INPUT_GET, 'lon', FILTER_VALIDATE_FLOAT);
 $altitude = filter_input(INPUT_GET, 'altitude', FILTER_VALIDATE_FLOAT);
 $course = filter_input(INPUT_GET, 'course', FILTER_VALIDATE_FLOAT);
 $speed = filter_input(INPUT_GET, 'speed', FILTER_VALIDATE_FLOAT);
+$durationHours = filter_input(INPUT_GET, 'duration', FILTER_VALIDATE_INT);
+$model = isset($_GET['model']) ? (string) $_GET['model'] : 'icon_eu';
+$freeModels = [
+    'gfs_seamless',
+    'icon_seamless',
+    'ecmwf_ifs025',
+    'icon_eu',
+    'icon_d2'
+];
+$model = in_array($model, $freeModels, true) ? $model : 'icon_eu';
 $course = ($course === null || $course === false) ? 0.0 : (float) $course;
 $speed = ($speed === null || $speed === false) ? 0.0 : (float) $speed;
+$durationHours = ($durationHours === null || $durationHours === false) ? 24 : max(1, min(48, (int) $durationHours));
 $startTime = isset($_GET['time']) ? strtotime((string) $_GET['time']) : time();
 
 if ($lat === false || $lon === false || $altitude === false || $startTime === false ||
@@ -44,7 +55,7 @@ $query = http_build_query([
     'latitude' => $lat,
     'longitude' => $lon,
     'hourly' => implode(',', $variables),
-    'models' => 'icon_eu',
+    'models' => $model,
     'forecast_days' => 3,
     'timezone' => 'UTC'
 ]);
@@ -99,7 +110,6 @@ function getInterpolatedWind(array $forecast, array $timeStamps, int $timestamp,
 }
 
 [$windSpeed, $windDirection] = getInterpolatedWind($forecast, $timeStamps, $startTime, $lowerPressure, $upperPressure, $pressureWeight);
-$durationHours = 24;
 $stepSeconds = 600;
 $points = [[
     'lat' => $lat,
@@ -147,7 +157,7 @@ for ($seconds = $stepSeconds; $seconds <= $durationHours * 3600; $seconds += $st
 }
 
 echo json_encode([
-    'model' => 'ICON-EU',
+    'model' => $model,
     'pressure' => round($pressure, 1),
     'pressure_levels' => [$lowerPressure, $upperPressure],
     'points' => $points

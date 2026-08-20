@@ -202,7 +202,7 @@
     }
     .custom-forecast-row {
       display: grid;
-      grid-template-columns: 24px 1fr 48px;
+      grid-template-columns: 24px 1fr 58px 14px 90px 48px 42px;
       align-items: center;
       gap: 6px;
       margin-top: 5px;
@@ -522,21 +522,77 @@
       <span id="trajektorie-list"></span>
     </div>
     <div id="custom-forecast-section">
-      <div style="font-weight:bold;">Live forecast altitudes (ft):</div>
+      <div style="font-weight:bold;">Live forecast altitudes (ft) / duration (h):</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+        <span>Live forecast:</span>
+        <input id="live-forecast-duration" type="number" value="24" min="1" max="48" step="1" title="Live forecast duration in hours" style="width:58px;background:#111;color:#ffe066;border:1px solid #555;border-radius:4px;padding:3px 5px;">
+        <span>h</span>
+        <select id="live-forecast-model" title="Live forecast weather model" style="width:90px;background:#111;color:#ffe066;border:1px solid #555;border-radius:4px;padding:3px 2px;">
+          <option value="gfs_seamless">GFS</option>
+          <option value="icon_seamless">ICON Global</option>
+          <option value="ecmwf_ifs025">ECMWF OpenIFS</option>
+          <option value="icon_eu" selected>ICON-EU</option>
+          <option value="icon_d2">ICON-D2</option>
+        </select>
+        <label style="font-size:0.85em;display:flex;align-items:center;gap:2px;" title="Refresh automatically every 10 minutes">
+          <input id="live-forecast-auto" type="checkbox" checked>
+          Refresh
+        </label>
+      </div>
       <div class="custom-forecast-row">
         <input type="checkbox" class="custom-forecast-enabled" checked>
         <input type="number" class="custom-forecast-altitude" value="1640" min="0" max="65617" step="100" title="Altitude in feet">
+        <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
+        <span style="font-size:0.85em;">h</span>
+        <select class="custom-forecast-model" title="Weather model">
+          <option value="gfs_seamless">GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu" selected>ICON-EU</option><option value="icon_d2">ICON-D2</option>
+        </select>
         <input type="color" class="custom-forecast-color" value="#00bfff" title="Trajectory color">
+        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
       </div>
       <div class="custom-forecast-row">
         <input type="checkbox" class="custom-forecast-enabled" checked>
         <input type="number" class="custom-forecast-altitude" value="3281" min="0" max="65617" step="100" title="Altitude in feet">
+        <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
+        <span style="font-size:0.85em;">h</span>
+        <select class="custom-forecast-model" title="Weather model">
+          <option value="gfs_seamless">GFS</option><option value="icon_seamless" selected>ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu">ICON-EU</option><option value="icon_d2">ICON-D2</option>
+        </select>
         <input type="color" class="custom-forecast-color" value="#ff9800" title="Trajectory color">
+        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
       </div>
       <div class="custom-forecast-row">
         <input type="checkbox" class="custom-forecast-enabled" checked>
         <input type="number" class="custom-forecast-altitude" value="6562" min="0" max="65617" step="100" title="Altitude in feet">
+        <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
+        <span style="font-size:0.85em;">h</span>
+        <select class="custom-forecast-model" title="Weather model">
+          <option value="gfs_seamless">GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025" selected>ECMWF OpenIFS</option><option value="icon_eu">ICON-EU</option><option value="icon_d2">ICON-D2</option>
+        </select>
         <input type="color" class="custom-forecast-color" value="#ff00cc" title="Trajectory color">
+        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
+      </div>
+      <div class="custom-forecast-row">
+        <input type="checkbox" class="custom-forecast-enabled" checked>
+        <input type="number" class="custom-forecast-altitude" value="9843" min="0" max="65617" step="100" title="Altitude in feet">
+        <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
+        <span style="font-size:0.85em;">h</span>
+        <select class="custom-forecast-model" title="Weather model">
+          <option value="gfs_seamless">GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu" selected>ICON-EU</option><option value="icon_d2">ICON-D2</option>
+        </select>
+        <input type="color" class="custom-forecast-color" value="#00ff44" title="Trajectory color">
+        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
+      </div>
+      <div class="custom-forecast-row">
+        <input type="checkbox" class="custom-forecast-enabled" checked>
+        <input type="number" class="custom-forecast-altitude" value="13123" min="0" max="65617" step="100" title="Altitude in feet">
+        <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
+        <span style="font-size:0.85em;">h</span>
+        <select class="custom-forecast-model" title="Weather model">
+          <option value="gfs_seamless">GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu">ICON-EU</option><option value="icon_d2" selected>ICON-D2</option>
+        </select>
+        <input type="color" class="custom-forecast-color" value="#ffd600" title="Trajectory color">
+        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
       </div>
       <button id="custom-forecast-apply" style="margin-top:8px;background:#333;color:#ffe066;border-radius:6px;padding:4px 10px;border:none;cursor:pointer;font-weight:bold;width:100%;">Calculate forecast</button>
     </div>
@@ -552,6 +608,7 @@
         <button id="export-settings-btn" style="background:#333;color:#ffe066;border-radius:6px;padding:4px 12px;border:none;cursor:pointer;">Export settings</button>
         <button id="import-settings-btn" style="background:#333;color:#ffe066;border-radius:6px;padding:4px 12px;border:none;cursor:pointer;margin-left:8px;">Import settings</button>
         <select id="import-settings-select" style="display:none;margin-left:8px;background:#333;color:#ffe066;border-radius:6px;padding:4px 8px;border:none;"></select>
+        <input id="local-settings-file" type="file" accept=".json,application/json" style="display:none;">
       </div>
     </div>
   </div>
@@ -662,6 +719,9 @@
     let iconEuTrajectoryMarkers = [];
     let iconEuSunMarkers = [];
     let cachedIconEuPoints = null;
+    let liveForecastDuration = 24;
+    let liveForecastModel = 'icon_eu';
+    let liveForecastAutoRefresh = true;
     let customForecasts = [];
     let lastIconEuRequest = 0;
     let showLinearForecast = true;
@@ -770,8 +830,18 @@
         `;
         openaipLabel.parentNode.insertBefore(forecastDiv, trajDiv.nextSibling);
 
-        forecastDiv.querySelector('#linear-forecast-checkbox').addEventListener('change', function() {
+        const savedLinearForecast = localStorage.getItem('showLinearForecast');
+        const savedIconEuForecast = localStorage.getItem('showIconEuForecast');
+        const linearForecastCheckbox = forecastDiv.querySelector('#linear-forecast-checkbox');
+        const iconEuForecastCheckbox = forecastDiv.querySelector('#icon-eu-forecast-checkbox');
+        if (savedLinearForecast !== null) linearForecastCheckbox.checked = savedLinearForecast === 'true';
+        if (savedIconEuForecast !== null) iconEuForecastCheckbox.checked = savedIconEuForecast === 'true';
+        showLinearForecast = linearForecastCheckbox.checked;
+        showIconEuForecast = iconEuForecastCheckbox.checked;
+
+        linearForecastCheckbox.addEventListener('change', function() {
           showLinearForecast = this.checked;
+          localStorage.setItem('showLinearForecast', String(showLinearForecast));
           if (showLinearForecast) {
             updateExtrapolatedTrack();
           } else {
@@ -779,8 +849,9 @@
           }
         });
 
-        forecastDiv.querySelector('#icon-eu-forecast-checkbox').addEventListener('change', function() {
+        iconEuForecastCheckbox.addEventListener('change', function() {
           showIconEuForecast = this.checked;
+          localStorage.setItem('showIconEuForecast', String(showIconEuForecast));
           if (showIconEuForecast) {
             updateIconEuTrajectory();
           } else {
@@ -1412,6 +1483,7 @@
         showTrajHourMarkers(trajTrackData[i].latlngs, trajTrackData[i].times, trajTrackData[i].color);
         showTrajCurrentTimeMarker(trajTrackData[i].latlngs, trajTrackData[i].times, trajTrackData[i].color);
       }
+      if (typeof saveMapSettingsLocally === "function") saveMapSettingsLocally();
     }
 
     function showTrajHourMarkers(latlngs, times, color) {
@@ -1641,6 +1713,8 @@
         altitude: lastKnownGpsData.gps_alt,
         course: Number.isFinite(Number(lastKnownGpsData.gps_course)) ? lastKnownGpsData.gps_course : 0,
         speed: Number.isFinite(Number(lastKnownGpsData.gps_speed)) ? lastKnownGpsData.gps_speed : 0,
+        duration: liveForecastDuration,
+        model: liveForecastModel,
         time: new Date().toISOString()
       });
       fetch(`icon_eu_trajectory.php?${params}`)
@@ -1714,6 +1788,9 @@
           index,
           enabled: row.querySelector('.custom-forecast-enabled').checked,
           altitude: Number(row.querySelector('.custom-forecast-altitude').value),
+          duration: Number(row.querySelector('.custom-forecast-duration').value),
+          model: row.querySelector('.custom-forecast-model').value,
+          autoRefresh: row.querySelector('.custom-forecast-auto').checked,
           color: row.querySelector('.custom-forecast-color').value,
           points: previous.points || null,
           layerGroup: previous.layerGroup || null,
@@ -1727,6 +1804,9 @@
       const settings = Array.from(document.querySelectorAll('.custom-forecast-row')).map(row => ({
         enabled: row.querySelector('.custom-forecast-enabled').checked,
         altitude: row.querySelector('.custom-forecast-altitude').value,
+        duration: row.querySelector('.custom-forecast-duration').value,
+        model: row.querySelector('.custom-forecast-model').value,
+        autoRefresh: row.querySelector('.custom-forecast-auto').checked,
         color: row.querySelector('.custom-forecast-color').value
       }));
       localStorage.setItem('mapCustomForecastSettings', JSON.stringify(settings));
@@ -1741,9 +1821,15 @@
           if (!saved) return;
           const enabled = row.querySelector('.custom-forecast-enabled');
           const altitude = row.querySelector('.custom-forecast-altitude');
+          const duration = row.querySelector('.custom-forecast-duration');
+          const model = row.querySelector('.custom-forecast-model');
+          const autoRefresh = row.querySelector('.custom-forecast-auto');
           const color = row.querySelector('.custom-forecast-color');
           if (typeof saved.enabled === 'boolean') enabled.checked = saved.enabled;
           if (Number.isFinite(Number(saved.altitude))) altitude.value = saved.altitude;
+          if (Number.isFinite(Number(saved.duration))) duration.value = saved.duration;
+          if (typeof saved.model === 'string' && Array.from(model.options).some(option => option.value === saved.model)) model.value = saved.model;
+          if (typeof saved.autoRefresh === 'boolean') autoRefresh.checked = saved.autoRefresh;
           if (typeof saved.color === 'string' && /^#[0-9a-f]{6}$/i.test(saved.color)) color.value = saved.color;
         });
       } catch (error) {
@@ -1751,12 +1837,71 @@
       }
     }
 
+    function saveLiveForecastDuration() {
+      const input = document.getElementById('live-forecast-duration');
+      liveForecastDuration = Math.max(1, Math.min(48, Number(input.value) || 24));
+      input.value = liveForecastDuration;
+      localStorage.setItem('mapLiveForecastDuration', String(liveForecastDuration));
+    }
+
+    function loadLiveForecastDuration() {
+      const saved = Number(localStorage.getItem('mapLiveForecastDuration'));
+      if (Number.isFinite(saved) && saved >= 1 && saved <= 48) liveForecastDuration = saved;
+      document.getElementById('live-forecast-duration').value = liveForecastDuration;
+    }
+
+    function saveLiveForecastModel() {
+      liveForecastModel = document.getElementById('live-forecast-model').value;
+      localStorage.setItem('mapLiveForecastModel', liveForecastModel);
+    }
+
+    function loadLiveForecastModel() {
+      const saved = localStorage.getItem('mapLiveForecastModel');
+      const model = document.getElementById('live-forecast-model');
+      if (saved && Array.from(model.options).some(option => option.value === saved)) liveForecastModel = saved;
+      model.value = liveForecastModel;
+    }
+
+    function saveLiveForecastAutoRefresh() {
+      liveForecastAutoRefresh = document.getElementById('live-forecast-auto').checked;
+      localStorage.setItem('mapLiveForecastAutoRefresh', String(liveForecastAutoRefresh));
+    }
+
+    function loadLiveForecastAutoRefresh() {
+      const saved = localStorage.getItem('mapLiveForecastAutoRefresh');
+      if (saved !== null) liveForecastAutoRefresh = saved === 'true';
+      document.getElementById('live-forecast-auto').checked = liveForecastAutoRefresh;
+    }
+
     function renderCustomForecast(forecast) {
       clearCustomForecast(forecast);
       if (!forecast.enabled || !Array.isArray(forecast.points) || forecast.points.length < 2) return;
 
       forecast.layerGroup = L.layerGroup().addTo(map);
-      const line = L.polyline(forecast.points.map(point => [point.lat, point.lon]), {
+      let segmentPoints = [forecast.points[0]];
+      let segmentIsDaylight = solarElevation(
+        new Date(forecast.points[0].time),
+        forecast.points[0].lat,
+        forecast.points[0].lon
+      ) >= 0;
+      for (let pointIndex = 1; pointIndex < forecast.points.length; pointIndex++) {
+        const point = forecast.points[pointIndex];
+        const isDaylight = solarElevation(new Date(point.time), point.lat, point.lon) >= 0;
+        if (isDaylight !== segmentIsDaylight) {
+          L.polyline(segmentPoints.concat(point).map(item => [item.lat, item.lon]), {
+            color: forecast.color,
+            weight: 5,
+            opacity: 1,
+            dashArray: "2 6",
+            interactive: false
+          }).addTo(forecast.layerGroup);
+          segmentPoints = [point];
+          segmentIsDaylight = isDaylight;
+        } else {
+          segmentPoints.push(point);
+        }
+      }
+      L.polyline(segmentPoints.map(point => [point.lat, point.lon]), {
         color: forecast.color,
         weight: 5,
         opacity: 1,
@@ -1802,7 +1947,7 @@
       customForecasts.forEach(renderCustomForecast);
     }
 
-    function updateCustomForecasts() {
+    function updateCustomForecasts(forceManual = false) {
       if (!lastKnownGpsData) return;
       saveCustomForecastSettings();
       readCustomForecastSettings();
@@ -1810,11 +1955,13 @@
       if (values.some(value => value === undefined || value === null || value === "" || !Number.isFinite(Number(value)))) return;
 
       const requests = customForecasts.map(forecast => {
-        if (!forecast.enabled || !Number.isFinite(forecast.altitude)) return Promise.resolve(null);
+        if (!forecast.enabled || !Number.isFinite(forecast.altitude) || (!forecast.autoRefresh && !forceManual)) return Promise.resolve(null);
         const params = new URLSearchParams({
           lat: lastKnownGpsData.gps_lat,
           lon: lastKnownGpsData.gps_lng,
           altitude: forecast.altitude * 0.3048,
+          duration: forecast.duration,
+          model: forecast.model,
           course: Number.isFinite(Number(lastKnownGpsData.gps_course)) ? lastKnownGpsData.gps_course : 0,
           speed: Number.isFinite(Number(lastKnownGpsData.gps_speed)) ? lastKnownGpsData.gps_speed : 0,
           time: new Date().toISOString()
@@ -1836,18 +1983,41 @@
       });
     }
 
-    document.getElementById('custom-forecast-apply').addEventListener('click', updateCustomForecasts);
+    document.getElementById('custom-forecast-apply').addEventListener('click', () => updateCustomForecasts(true));
+    document.getElementById('live-forecast-duration').addEventListener('change', () => {
+      saveLiveForecastDuration();
+      cachedIconEuPoints = null;
+      if (lastKnownGpsData) updateIconEuTrajectory();
+    });
+    document.getElementById('live-forecast-model').addEventListener('change', () => {
+      saveLiveForecastModel();
+      cachedIconEuPoints = null;
+      if (lastKnownGpsData) updateIconEuTrajectory();
+    });
+    document.getElementById('live-forecast-auto').addEventListener('change', saveLiveForecastAutoRefresh);
     document.querySelectorAll('.custom-forecast-enabled').forEach(input => {
       input.addEventListener('change', () => {
         saveCustomForecastSettings();
         readCustomForecastSettings();
-        renderAllCustomForecasts();
+        if (input.checked) {
+          updateCustomForecasts();
+        } else {
+          renderAllCustomForecasts();
+        }
       });
     });
-    document.querySelectorAll('.custom-forecast-altitude, .custom-forecast-color').forEach(input => {
+    document.querySelectorAll('.custom-forecast-altitude, .custom-forecast-duration, .custom-forecast-model, .custom-forecast-color, .custom-forecast-auto').forEach(input => {
       input.addEventListener('change', saveCustomForecastSettings);
     });
+    document.querySelectorAll('.custom-forecast-auto').forEach(input => {
+      input.addEventListener('change', () => {
+        if (input.checked) updateCustomForecasts();
+      });
+    });
     loadCustomForecastSettings();
+    loadLiveForecastDuration();
+    loadLiveForecastModel();
+    loadLiveForecastAutoRefresh();
 
     function getVisibleTrackEnd(startLatLng, course) {
       const startPoint = map.latLngToContainerPoint(startLatLng);
@@ -2347,8 +2517,10 @@
     fetchAndUpdate();
     setInterval(() => {
       if (!lastKnownGpsData) return;
-      lastIconEuRequest = Date.now();
-      updateIconEuTrajectory();
+      if (liveForecastAutoRefresh) {
+        lastIconEuRequest = Date.now();
+        updateIconEuTrajectory();
+      }
       updateCustomForecasts();
     }, 10 * 60 * 1000);
 
@@ -2435,6 +2607,7 @@
       }).addTo(map);
 
       lastCircleData = { lat, lng, radius };
+      saveMapSettingsLocally();
       // Popup nur anzeigen, wenn drawCircleMode aktiv ist:
       if (drawCircleMode) {
         tempCircleLabel = L.popup({closeButton:false, autoClose:false, closeOnClick:false, className:"circle-radius-label"})
@@ -2509,14 +2682,13 @@
         const center = tempCircle.getLatLng();
         const radius = tempCircle.getRadius();
         lastCircleData = { lat: center.lat, lng: center.lng, radius };
+        saveMapSettingsLocally();
       }
       // Kreis bleibt sichtbar, Label bleibt
       // Wenn du möchtest, dass der Kreis nach dem Zeichnen verschwindet, entferne ihn hier.
     });
 
-    // Export-Funktion
-    document.getElementById('export-settings-btn').addEventListener('click', function() {
-      // Trajektorien-Daten sammeln
+    function collectMapSettings() {
       const trajData = trajTrackData.map(track => ({
         name: track.name,
         color: track.color,
@@ -2526,7 +2698,7 @@
         fileName: track.fileName
       }));
 
-      const exportData = {
+      return {
         loadedFiles: loadedFileNames,
         circle: lastCircleData,
         trackRangeFrom: document.getElementById('track-from-datetime').value,
@@ -2535,52 +2707,67 @@
         mapCenter: map.getCenter(),
         trajData: trajData
       };
+    }
+
+    function saveMapSettingsLocally() {
+      localStorage.setItem('mapSettings', JSON.stringify(collectMapSettings()));
+    }
+
+    map.on('moveend', saveMapSettingsLocally);
+    trackFromInput.addEventListener('change', saveMapSettingsLocally);
+    trackToInput.addEventListener('change', saveMapSettingsLocally);
+    trackToLiveCheckbox.addEventListener('change', saveMapSettingsLocally);
+
+    // Export-Funktion
+    document.getElementById('export-settings-btn').addEventListener('click', function() {
+      const exportData = collectMapSettings();
 
       // Timestamp für Dateiname
       const now = new Date();
       const timestamp = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + '_' + String(now.getHours()).padStart(2, '0') + '-' + String(now.getMinutes()).padStart(2, '0') + '-' + String(now.getSeconds()).padStart(2, '0');
       const filename = 'wuzi_map_settings_' + timestamp + '.json';
 
-      fetch('save_settings.php?filename=' + encodeURIComponent(filename), {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(exportData, null, 2)
-      })
-      .then(r => r.text())
-      .then(msg => {
-        alert("Einstellungen wurden als '" + filename + "' gespeichert!\n" + msg);
-      })
-      .catch(err => {
-        alert("Fehler beim Speichern: " + err);
-      });
+      const settingsJson = JSON.stringify(exportData, null, 2);
+      localStorage.setItem('mapSettings', settingsJson);
+      const blob = new Blob([settingsJson], {type: 'application/json'});
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(downloadUrl);
     });
 
-    // Import-Funktion: Button lädt Liste der JSON-Dateien vom Server
+    const localSettingsFile = document.getElementById('local-settings-file');
+
     document.getElementById('import-settings-btn').addEventListener('click', function() {
-      fetch('list_settings.php') // Annahme: PHP-Script, das JSON-Array mit Dateinamen zurückgibt
-        .then(r => r.json())
-        .then(files => {
-          const select = document.getElementById('import-settings-select');
-          select.innerHTML = '<option value="">Select a settings file...</option>';
-          files.forEach(file => {
-            const option = document.createElement('option');
-            option.value = file;
-            option.textContent = file;
-            select.appendChild(option);
-          });
-          select.style.display = 'inline-block';
-        })
-        .catch(err => {
-          alert("Fehler beim Laden der Dateiliste: " + err);
-        });
+      localSettingsFile.click();
+    });
+
+    localSettingsFile.addEventListener('change', function() {
+      const file = this.files && this.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        try {
+          const data = JSON.parse(event.target.result);
+          localStorage.setItem('mapSettings', JSON.stringify(data));
+          window.location.reload();
+        } catch (error) {
+          alert("Invalid local settings file: " + error.message);
+        }
+      };
+      reader.readAsText(file);
+      this.value = '';
     });
 
     // Beim Auswählen einer Datei im Select, lade und importiere sie
     document.getElementById('import-settings-select').addEventListener('change', function() {
       const filename = this.value;
       if (!filename) return;
-      fetch('settings/' + filename) // Annahme: Dateien liegen in 'settings/' Ordner
-        .then(r => r.json())
+      const localSettings = localStorage.getItem('mapSettings');
+      if (!localSettings) return;
+      Promise.resolve().then(() => JSON.parse(localSettings))
         .then(data => {
           // Import-Logik wie zuvor
           // Vor dem Laden alle alten Daten entfernen
@@ -2812,9 +2999,17 @@
           this.style.display = 'none';
         })
         .catch(err => {
-          alert("Fehler beim Laden der Datei: " + err);
+          alert("Local settings could not be loaded: " + err);
         });
     });
+
+    const savedMapSettings = localStorage.getItem('mapSettings');
+    if (savedMapSettings) {
+      const localSelect = document.getElementById('import-settings-select');
+      localSelect.innerHTML = '<option value="local">Local settings</option>';
+      localSelect.value = 'local';
+      localSelect.dispatchEvent(new Event('change'));
+    }
 
     // --- NEU: Bodenhöhe beim Rechtsklick anzeigen ---
     map.on('contextmenu', function(e) {
