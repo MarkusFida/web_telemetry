@@ -1550,6 +1550,79 @@
       iconEuSunMarkers.push(marker);
     }
 
+    function findSolarTransitionPoint(previousPoint, currentPoint) {
+      let before = previousPoint;
+      let after = currentPoint;
+      const wasDaylight = solarElevation(new Date(before.time), before.lat, before.lon) >= 0;
+
+      for (let iteration = 0; iteration < 12; iteration++) {
+        const factor = 0.5;
+        const beforeTime = new Date(before.time).getTime();
+        const afterTime = new Date(after.time).getTime();
+        const middleTime = beforeTime + (afterTime - beforeTime) * factor;
+        const middle = {
+          lat: before.lat + (after.lat - before.lat) * factor,
+          lon: before.lon + (after.lon - before.lon) * factor,
+          time: new Date(middleTime).toISOString()
+        };
+        const middleIsDaylight = solarElevation(new Date(middle.time), middle.lat, middle.lon) >= 0;
+        if (middleIsDaylight === wasDaylight) {
+          before = middle;
+        } else {
+          after = middle;
+        }
+      }
+
+      return {
+        point: after,
+        isSunset: wasDaylight
+      };
+    }
+
+    function interpolateTrajectoryPoint(previousPoint, currentPoint, targetTime) {
+      const previousTime = new Date(previousPoint.time).getTime();
+      const currentTime = new Date(currentPoint.time).getTime();
+      const factor = currentTime === previousTime ? 0 : (targetTime - previousTime) / (currentTime - previousTime);
+      return {
+        lat: previousPoint.lat + (currentPoint.lat - previousPoint.lat) * factor,
+        lon: previousPoint.lon + (currentPoint.lon - previousPoint.lon) * factor,
+        time: new Date(targetTime).toISOString()
+      };
+    }
+
+    function getFullHourPoints(points) {
+      const hourPoints = [];
+      for (let index = 1; index < points.length; index++) {
+        const previous = points[index - 1];
+        const current = points[index];
+        const previousTime = new Date(previous.time).getTime();
+        const currentTime = new Date(current.time).getTime();
+        const nextHour = new Date(previousTime);
+        nextHour.setUTCMinutes(0, 0, 0);
+        if (nextHour.getTime() <= previousTime) nextHour.setUTCHours(nextHour.getUTCHours() + 1);
+        while (nextHour.getTime() <= currentTime) {
+          hourPoints.push(interpolateTrajectoryPoint(previous, current, nextHour.getTime()));
+          nextHour.setUTCHours(nextHour.getUTCHours() + 1);
+        }
+      }
+      return hourPoints;
+    }
+
+    function addTrajectoryHourMarker(point, color, markerCollection) {
+      const date = new Date(point.time);
+      const hourText = String(date.getUTCHours()).padStart(2, "0");
+      const marker = L.marker([point.lat, point.lon], {
+        icon: L.divIcon({
+          className: "",
+          html: `<div style="transform:translate(-50%,-50%);font-size:1.2em;font-weight:bold;color:${color};text-shadow:0 1px 2px #000,0 0 4px #000;white-space:nowrap;">${hourText}</div>`,
+          iconSize: [0, 0],
+          iconAnchor: [0, 0]
+        }),
+        interactive: false
+      }).addTo(map);
+      markerCollection.push(marker);
+    }
+
     function updateIconEuTrajectory(forceFetch = true) {
       clearIconEuTrajectory();
       if (!showIconEuForecast) return;
@@ -1590,8 +1663,9 @@
             const point = visiblePoints[index];
             const isDaylight = solarElevation(new Date(point.time), point.lat, point.lon) >= 0;
             if (isDaylight !== segmentIsDaylight) {
-              addIconEuSunMarker(point, segmentIsDaylight);
-              const line = L.polyline(segmentPoints.concat(point).map(item => [item.lat, item.lon]), {
+              const transition = findSolarTransitionPoint(visiblePoints[index - 1], point);
+              addIconEuSunMarker(transition.point, transition.isSunset);
+              const line = L.polyline(segmentPoints.concat(transition.point).map(item => [item.lat, item.lon]), {
                 color: segmentIsDaylight ? "#00e5ff" : "#0b3d5c",
                 weight: 5,
                 opacity: 1,
@@ -1600,7 +1674,7 @@
               }).addTo(map);
               iconEuTrajectoryLine = iconEuTrajectoryLine || L.layerGroup().addTo(map);
               iconEuTrajectoryLine.addLayer(line);
-              segmentPoints = [point];
+              segmentPoints = [transition.point, point];
               segmentIsDaylight = isDaylight;
             } else {
               segmentPoints.push(point);
@@ -1616,20 +1690,8 @@
           iconEuTrajectoryLine = iconEuTrajectoryLine || L.layerGroup().addTo(map);
           iconEuTrajectoryLine.addLayer(finalLine);
 
-          visiblePoints.forEach((point, index) => {
-            if (index === 0 || index % 6 !== 0) return;
-            const date = new Date(point.time);
-            const hourText = String(date.getUTCHours()).padStart(2, "0");
-            const marker = L.marker([point.lat, point.lon], {
-              icon: L.divIcon({
-                className: "",
-                html: `<div style="transform:translate(-50%,-50%);font-size:1.2em;font-weight:bold;color:#00e5ff;text-shadow:0 1px 2px #000,0 0 4px #000;white-space:nowrap;">${hourText}</div>`,
-                iconSize: [0, 0],
-                iconAnchor: [0, 0]
-              }),
-              interactive: false
-            }).addTo(map);
-            iconEuTrajectoryMarkers.push(marker);
+          getFullHourPoints(visiblePoints).forEach(point => {
+            addTrajectoryHourMarker(point, "#00e5ff", iconEuTrajectoryMarkers);
           });
     }
 
@@ -1701,20 +1763,8 @@
         dashArray: "2 6",
         interactive: false
       }).addTo(forecast.layerGroup);
-      forecast.points.forEach((point, pointIndex) => {
-        if (pointIndex === 0 || pointIndex % 6 !== 0) return;
-        const date = new Date(point.time);
-        const hourText = String(date.getUTCHours()).padStart(2, "0");
-        const marker = L.marker([point.lat, point.lon], {
-          icon: L.divIcon({
-            className: "",
-            html: `<div style="transform:translate(-50%,-50%);font-size:1.2em;font-weight:bold;color:${forecast.color};text-shadow:0 1px 2px #000,0 0 4px #000;white-space:nowrap;">${hourText}</div>`,
-            iconSize: [0, 0],
-            iconAnchor: [0, 0]
-          }),
-          interactive: false
-        }).addTo(map);
-        forecast.markers.push(marker);
+      getFullHourPoints(forecast.points).forEach(point => {
+        addTrajectoryHourMarker(point, forecast.color, forecast.markers);
       });
 
       let previousDaylight = solarElevation(
@@ -1727,9 +1777,10 @@
         const daylight = solarElevation(new Date(point.time), point.lat, point.lon) >= 0;
         if (daylight === previousDaylight) continue;
 
-        const date = new Date(point.time);
+        const transition = findSolarTransitionPoint(forecast.points[pointIndex - 1], point);
+        const date = new Date(transition.point.time);
         const timeText = `${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(2, "0")} UTC`;
-        const sunMarker = L.circleMarker([point.lat, point.lon], {
+        const sunMarker = L.circleMarker([transition.point.lat, transition.point.lon], {
           radius: 7,
           color: daylight ? "#ff9800" : "#111",
           fillColor: daylight ? "#ffe066" : "#444",
