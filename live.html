@@ -399,6 +399,14 @@
       return `${Math.round(numericFeet).toLocaleString("en-US")} ft, ${Math.round(numericFeet * 0.3048).toLocaleString("en-US")} m (FL${String(flightLevel).padStart(3, "0")})`;
     }
 
+    function formatAltitudeAboveGround(gpsAltitudeMeters, groundElevationMeters) {
+      const gpsMeters = Number(gpsAltitudeMeters);
+      const gndMeters = Number(groundElevationMeters);
+      if (!Number.isFinite(gpsMeters) || !Number.isFinite(gndMeters)) return "--";
+      const aglFeet = (gpsMeters - gndMeters) * 3.28084;
+      return formatAltitudeBothUnits(aglFeet);
+    }
+
     function getBaroAltitudeAtQnh1013(data) {
       const barometricFeet = Number(data.hoehe_ft);
       const qnh = Number(data.qnh);
@@ -584,8 +592,10 @@
       // --- GEO-HÖHE (über Meer) dynamisch berechnen und anzeigen ---
       getGroundElevation(data.gps_lat, data.gps_lng, function(groundElevation) {
         let geoHeight = "--";
+        let altitudeAboveGnd = "--";
         if (groundElevation !== null) {
           geoHeight = formatAltitudeBothUnits(groundElevation * 3.28084);
+          altitudeAboveGnd = formatAltitudeAboveGround(data.gps_alt, groundElevation);
         }
 
         const popupText = `
@@ -595,6 +605,7 @@
             <b>Baro Alt (QNH ${data.qnh}):</b> ${formatAltitudeBothUnits(Number(data.hoehe_ft))}<br>
             <b>Baro Alt (QNH 1013):</b> ${formatFlightLevelAndMeters(getBaroAltitudeAtQnh1013(data))}<br>
             <b>GND elev.:</b> ${geoHeight}<br>
+            <b>Alt above GND:</b> ${altitudeAboveGnd}<br>
             <b>Speed:</b> ${data.gps_speed} kts<br>
             <b>Vario:</b> ${typeof data.vario !== "undefined" ? data.vario + " m/s" : "--"}<br>
             <b>Track:</b> ${data.gps_course}°

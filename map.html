@@ -754,6 +754,7 @@
     let trajHourMarkers = [];
     let trajSelected = [];
     let geoHeight = "--"; // Bodenhöhe, falls benötigt
+    let geoElevationMeters = null;
 
     let loadedFileNames = [];
     let lastCircleData = null; // {lat, lng, radius}
@@ -2048,6 +2049,13 @@
       return formatAltitudeBothUnits(Number(meters) * 3.28084);
     }
 
+    function formatAltitudeAboveGround(gpsAltitudeMeters, groundElevationMeters) {
+      const gpsMeters = Number(gpsAltitudeMeters);
+      const gndMeters = Number(groundElevationMeters);
+      if (!Number.isFinite(gpsMeters) || !Number.isFinite(gndMeters)) return "--";
+      return formatAltitudeBothUnits((gpsMeters - gndMeters) * 3.28084);
+    }
+
     function liveForecastLineTooltip(refreshTimestamp, source) {
       const qnh = lastKnownGpsData && lastKnownGpsData.qnh ? lastKnownGpsData.qnh : "--";
       return `<b>Baro altitude (QNH ${qnh}):</b> ${formatAltitudeBothUnits(getLiveConfiguredBarometricAltitudeFeet())}<br><b>Baro altitude (QNH 1013):</b> ${formatFlightLevelAndMeters(getLiveBarometricAltitudeFeet())}<br><b>Last refresh:</b> ${formatRefreshTime(refreshTimestamp)}<br><b>Model:</b> ${source?.model || "--"}<br><b>Model run:</b> ${formatModelRun(source)}<br><b>Forecast valid from:</b> ${formatForecastValidFrom(source)}<br><b>Source fetched:</b> ${formatSourceTime(source?.fetchedAt)}`;
@@ -2586,6 +2594,7 @@
         <b>Baro altitude (QNH 1013):</b> ${formatFlightLevelAndMeters(barometricAltitudeFeet)}<br>
         <b>GPS altitude:</b> ${formatAltitudeBothUnits(Number(data.gps_alt) * 3.28084)}<br>
         <b>GND elev.:</b> ${geoHeight}<br>
+        <b>Alt above GND:</b> ${formatAltitudeAboveGround(data.gps_alt, geoElevationMeters)}<br>
         <b>Speed (kt):</b> ${data.gps_speed}<br>
         <b>Course:</b> ${data.gps_course}<br>
         <b>Vario:</b> ${data.vario}<br>
@@ -2607,6 +2616,7 @@
 
       // GND Elevation asynchron holen und Popup aktualisieren
       fetchGroundElevation(data.gps_lat, data.gps_lng, function(groundElevation) {
+        geoElevationMeters = Number.isFinite(Number(groundElevation)) ? Number(groundElevation) : null;
         geoHeight = formatGroundElevation(groundElevation);
         if (marker) {
           let popupText = `
@@ -2615,6 +2625,7 @@
             <b>Baro altitude (QNH 1013):</b> ${formatFlightLevelAndMeters(getLiveBarometricAltitudeFeet())}<br>
             <b>GPS altitude:</b> ${formatAltitudeBothUnits(Number(data.gps_alt) * 3.28084)}<br>
             <b>GND elev.:</b> ${geoHeight}<br>
+            <b>Alt above GND:</b> ${formatAltitudeAboveGround(data.gps_alt, geoElevationMeters)}<br>
             <b>Speed (kt):</b> ${data.gps_speed}<br>
             <b>Course:</b> ${data.gps_course}<br>
             <b>Vario:</b> ${data.vario}<br>
