@@ -1531,6 +1531,7 @@
             // Fenster, Trajektorien-Layer und Zeitpunkte einblenden
             trajCtrl.style.display = "flex";
             trajLayers.forEach(l => { if (!map.hasLayer(l)) l.addTo(map); });
+            trajLayers.forEach(l => { if (l._mobileTouchTarget && !map.hasLayer(l._mobileTouchTarget)) l._mobileTouchTarget.addTo(map); });
             // Zeitpunkte (Stundenmarker, Waypointmarker, Nummern) wieder einblenden
             trajHourMarkers.forEach(m => { if (!map.hasLayer(m)) m.addTo(map); });
             trajWaypointMarkers.forEach(m => { if (!map.hasLayer(m)) m.addTo(map); });
@@ -1540,6 +1541,7 @@
             // Fenster, Trajektorien-Layer und Zeitpunkte ausblenden
             trajCtrl.style.display = "none";
             trajLayers.forEach(l => { if (map.hasLayer(l)) map.removeLayer(l); });
+            trajLayers.forEach(l => { if (l._mobileTouchTarget && map.hasLayer(l._mobileTouchTarget)) map.removeLayer(l._mobileTouchTarget); });
             // Zeitpunkte (Stundenmarker, Waypointmarker, Nummern) ausblenden
             trajHourMarkers.forEach(m => { if (map.hasLayer(m)) map.removeLayer(m); });
             trajWaypointMarkers.forEach(m => { if (map.hasLayer(m)) map.removeLayer(m); });
@@ -1618,6 +1620,18 @@
         from: utcInputToApiValue(fromInput.value),
         to: utcInputToApiValue(toInput.value)
       };
+    }
+
+    function addMobileTrajectoryTouchTarget(poly) {
+      const touchTarget = L.polyline(poly.getLatLngs(), {
+        color: '#000',
+        weight: 28,
+        opacity: 0.01,
+        interactive: true
+      }).addTo(map);
+      touchTarget.on('click', event => poly.fire('click', event));
+      poly._mobileTouchTarget = touchTarget;
+      return touchTarget;
     }
 
     function loadTrackFromDb(doFit = true) {
@@ -1949,6 +1963,7 @@
               console.log('No nearest point found for click.'); // Debug
             }
           });
+          addMobileTrajectoryTouchTarget(poly);
           trajLayers.push(poly);
           trajSelected.push(true);
           trajTrackData.push({latlngs, times, color, name, elevations, fileName: file.name}); // Höhen speichern
@@ -1981,8 +1996,10 @@
             trajSelected[idx] = this.checked;
             if (this.checked) {
               trajLayers[idx].addTo(map);
+              trajLayers[idx]._mobileTouchTarget?.addTo(map);
             } else {
               map.removeLayer(trajLayers[idx]);
+              if (trajLayers[idx]._mobileTouchTarget) map.removeLayer(trajLayers[idx]._mobileTouchTarget);
             }
             updateAllHourAndTimeMarkers();
           });
@@ -2089,6 +2106,7 @@
                 console.log('No nearest point found for KML click.'); // Debug
               }
             });
+            addMobileTrajectoryTouchTarget(poly);
 
             trajLayers.push(poly);
             trajSelected.push(true);
@@ -2111,8 +2129,10 @@
               trajSelected[idx] = this.checked;
               if (this.checked) {
                 trajLayers[idx].addTo(map);
+                trajLayers[idx]._mobileTouchTarget?.addTo(map);
               } else {
                 map.removeLayer(trajLayers[idx]);
+                if (trajLayers[idx]._mobileTouchTarget) map.removeLayer(trajLayers[idx]._mobileTouchTarget);
               }
               updateAllHourAndTimeMarkers();
             });
@@ -2148,6 +2168,7 @@
       // Entferne rückwärts
       toRemove.reverse().forEach(idx => {
         if (map.hasLayer(trajLayers[idx])) map.removeLayer(trajLayers[idx]);
+        if (trajLayers[idx]._mobileTouchTarget) map.removeLayer(trajLayers[idx]._mobileTouchTarget);
         trajLayers.splice(idx, 1);
         trajSelected.splice(idx, 1);
         trajTrackData.splice(idx, 1);
@@ -2522,6 +2543,16 @@
       forecast.sunMarkers = [];
     }
 
+    function addMobileForecastTouchTarget(line, popupContent, layerGroup) {
+      const touchTarget = L.polyline(line.getLatLngs(), {
+        color: '#000',
+        weight: 28,
+        opacity: 0.01,
+        interactive: true
+      }).bindPopup(popupContent).addTo(layerGroup);
+      touchTarget.on('click', event => line.openPopup(event.latlng));
+    }
+
     function readCustomForecastSettings() {
       const rows = document.querySelectorAll('.custom-forecast-row');
       customForecasts = Array.from(rows).map((row, index) => {
@@ -2631,7 +2662,7 @@
         const point = forecast.points[pointIndex];
         const isDaylight = solarElevation(new Date(point.time), point.lat, point.lon) >= 0;
         if (isDaylight !== segmentIsDaylight) {
-          L.polyline(segmentPoints.concat(point).map(item => [item.lat, item.lon]), {
+          const forecastLine = L.polyline(segmentPoints.concat(point).map(item => [item.lat, item.lon]), {
             color: forecast.color,
             weight: 5,
             opacity: 1,
@@ -2640,14 +2671,15 @@
               }).bindTooltip(forecastLineTooltip(forecast.altitude, customForecastNextRefresh[forecast.index], forecast.source), {
             direction: "top",
             sticky: true
-          }).bindPopup(forecastLineTooltip(forecast.altitude, customForecastNextRefresh[forecast.index], forecast.source)).addTo(forecast.layerGroup);
+              }).bindPopup(forecastLineTooltip(forecast.altitude, customForecastNextRefresh[forecast.index], forecast.source)).addTo(forecast.layerGroup);
+              addMobileForecastTouchTarget(forecastLine, forecastLineTooltip(forecast.altitude, customForecastNextRefresh[forecast.index], forecast.source), forecast.layerGroup);
           segmentPoints = [point];
           segmentIsDaylight = isDaylight;
         } else {
           segmentPoints.push(point);
         }
       }
-      L.polyline(segmentPoints.map(point => [point.lat, point.lon]), {
+      const finalForecastLine = L.polyline(segmentPoints.map(point => [point.lat, point.lon]), {
         color: forecast.color,
         weight: 5,
         opacity: 1,
@@ -2657,6 +2689,7 @@
         direction: "top",
         sticky: true
       }).bindPopup(forecastLineTooltip(forecast.altitude, customForecastNextRefresh[forecast.index], forecast.source)).addTo(forecast.layerGroup);
+      addMobileForecastTouchTarget(finalForecastLine, forecastLineTooltip(forecast.altitude, customForecastNextRefresh[forecast.index], forecast.source), forecast.layerGroup);
       getFullHourPoints(forecast.points).forEach(point => {
         addTrajectoryHourMarker(point, forecast.color, forecast.markers);
       });
@@ -3849,6 +3882,7 @@
                   }, 100);
                 }
               });
+              addMobileTrajectoryTouchTarget(poly);
 
               trajLayers.push(poly);
               trajSelected.push(true);
@@ -3883,8 +3917,10 @@
                 trajSelected[idx] = this.checked;
                 if (this.checked) {
                   trajLayers[idx].addTo(map);
+                  trajLayers[idx]._mobileTouchTarget?.addTo(map);
                 } else {
                   map.removeLayer(trajLayers[idx]);
+                  if (trajLayers[idx]._mobileTouchTarget) map.removeLayer(trajLayers[idx]._mobileTouchTarget);
                 }
                 updateAllHourAndTimeMarkers();
               });
