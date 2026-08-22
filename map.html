@@ -1698,13 +1698,15 @@
       }
       if (!lastKnownGpsData) return;
 
-      const values = [lastKnownGpsData.gps_lat, lastKnownGpsData.gps_lng, lastKnownGpsData.gps_alt];
+      const baroAltitudeFeet1013 = getLiveBarometricAltitudeFeet();
+      const baroAltitudeMeters1013 = baroAltitudeFeet1013 * 0.3048;
+      const values = [lastKnownGpsData.gps_lat, lastKnownGpsData.gps_lng, baroAltitudeMeters1013];
       if (values.some(value => value === undefined || value === null || value === "" || !Number.isFinite(Number(value)))) return;
 
       const params = new URLSearchParams({
         lat: lastKnownGpsData.gps_lat,
         lon: lastKnownGpsData.gps_lng,
-        altitude: lastKnownGpsData.gps_alt,
+        altitude: baroAltitudeMeters1013,
         course: Number.isFinite(Number(lastKnownGpsData.gps_course)) ? lastKnownGpsData.gps_course : 0,
         speed: Number.isFinite(Number(lastKnownGpsData.gps_speed)) ? lastKnownGpsData.gps_speed : 0,
         duration: liveForecastDuration,
