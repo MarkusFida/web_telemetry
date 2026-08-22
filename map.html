@@ -2002,6 +2002,11 @@
         speed: Number.isFinite(Number(lastKnownGpsData.gps_speed)) ? lastKnownGpsData.gps_speed : 0,
         duration: liveForecastDuration,
         model: liveForecastModel,
+        refresh_minutes: 45,
+        refresh_distance_km: 40,
+        max_api_calls: 16,
+        cache_ttl_seconds: 1200,
+        grid_resolution_deg: 0.25,
         time: new Date().toISOString()
       });
       liveForecastNextRefresh = Date.now();
@@ -2286,6 +2291,11 @@
           model: forecast.model,
           course: Number.isFinite(Number(lastKnownGpsData.gps_course)) ? lastKnownGpsData.gps_course : 0,
           speed: Number.isFinite(Number(lastKnownGpsData.gps_speed)) ? lastKnownGpsData.gps_speed : 0,
+          refresh_minutes: 45,
+          refresh_distance_km: 40,
+          max_api_calls: 16,
+          cache_ttl_seconds: 1200,
+          grid_resolution_deg: 0.25,
           time: new Date().toISOString()
         });
         return fetch(`icon_eu_trajectory.php?${params}`)
