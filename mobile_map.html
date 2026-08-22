@@ -224,6 +224,28 @@
       border: 1px solid #555;
       border-radius: 4px;
     }
+    .custom-forecast-row .custom-forecast-level-label {
+      width: 100%;
+      box-sizing: border-box;
+      background: #181818;
+      color: #ffe066;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 3px 5px;
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .custom-forecast-row .custom-forecast-color-swatch {
+      display: inline-block;
+      width: 42px;
+      height: 26px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background: #00bfff;
+    }
     #trajektorie-controls.collapsed #traj-list-section,
     #trajektorie-controls.collapsed #traj-file-section,
     #trajektorie-controls.collapsed #traj-buttons-section {
@@ -1153,7 +1175,7 @@
       <span id="trajektorie-list"></span>
     </div>
     <div id="custom-forecast-section">
-      <div style="font-weight:bold;">Live forecast altitudes (ft) / duration (h):</div>
+      <div style="font-weight:bold;">Live forecast levels (950h-500h fixed) / free altitudes (ft) / duration (h):</div>
       <div class="forecast-toggle-row" style="display:flex;align-items:center;gap:6px;margin-top:6px;">
         <span>Linear forecast:</span>
         <input id="menu-linear-forecast-checkbox" type="checkbox" checked title="Show linear forecast">
@@ -1166,7 +1188,7 @@
         <input id="live-forecast-duration" type="number" value="24" min="1" max="48" step="1" title="Live forecast duration in hours" style="width:58px;background:#111;color:#ffe066;border:1px solid #555;border-radius:4px;padding:3px 5px;">
         <span>h</span>
         <select id="live-forecast-model" title="Live forecast weather model" style="width:90px;background:#111;color:#ffe066;border:1px solid #555;border-radius:4px;padding:3px 2px;">
-          <option value="gfs_seamless">GFS</option>
+          <option value="gfs_seamless">NOAA GFS</option>
           <option value="icon_seamless">ICON Global</option>
           <option value="ecmwf_ifs025">ECMWF OpenIFS</option>
           <option value="icon_eu" selected>ICON-EU</option>
@@ -1177,71 +1199,109 @@
           Refresh
         </label>
       </div>
-      <div class="custom-forecast-row">
+      <div class="custom-forecast-row fixed-level-row">
         <input type="checkbox" class="custom-forecast-enabled" checked>
-        <input type="number" class="custom-forecast-altitude" value="1640" min="0" max="65617" step="100" title="Altitude in feet">
+        <span class="custom-forecast-level-label" data-hpa="950" title="Fixed pressure level, not selectable">950 hPa</span>
+        <input type="hidden" class="custom-forecast-altitude" value="1771">
         <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
         <span style="font-size:0.85em;">h</span>
         <select class="custom-forecast-model" title="Weather model">
-          <option value="gfs_seamless">GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu" selected>ICON-EU</option><option value="icon_d2">ICON-D2</option>
+          <option value="gfs_seamless">NOAA GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu" selected>ICON-EU</option><option value="icon_d2">ICON-D2</option>
         </select>
-        <input type="color" class="custom-forecast-color" value="#00bfff" title="Trajectory color">
+        <span class="custom-forecast-color-swatch" title="Fixed trajectory color (Windy scale)"></span>
+        <input type="hidden" class="custom-forecast-color" value="#ffa100">
         <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
       </div>
-      <div class="custom-forecast-row">
+      <div class="custom-forecast-row fixed-level-row">
         <input type="checkbox" class="custom-forecast-enabled" checked>
-        <input type="number" class="custom-forecast-altitude" value="3281" min="0" max="65617" step="100" title="Altitude in feet">
+        <span class="custom-forecast-level-label" data-hpa="925" title="Fixed pressure level, not selectable">925 hPa</span>
+        <input type="hidden" class="custom-forecast-altitude" value="2502">
         <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
         <span style="font-size:0.85em;">h</span>
         <select class="custom-forecast-model" title="Weather model">
-          <option value="gfs_seamless">GFS</option><option value="icon_seamless" selected>ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu">ICON-EU</option><option value="icon_d2">ICON-D2</option>
+          <option value="gfs_seamless">NOAA GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu" selected>ICON-EU</option><option value="icon_d2">ICON-D2</option>
         </select>
-        <input type="color" class="custom-forecast-color" value="#ff9800" title="Trajectory color">
+        <span class="custom-forecast-color-swatch" title="Fixed trajectory color (Windy scale)"></span>
+        <input type="hidden" class="custom-forecast-color" value="#ffbfe4">
         <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
       </div>
-      <div class="custom-forecast-row">
+      <div class="custom-forecast-row fixed-level-row">
         <input type="checkbox" class="custom-forecast-enabled" checked>
-        <input type="number" class="custom-forecast-altitude" value="6562" min="0" max="65617" step="100" title="Altitude in feet">
+        <span class="custom-forecast-level-label" data-hpa="900" title="Fixed pressure level, not selectable">900 hPa</span>
+        <input type="hidden" class="custom-forecast-altitude" value="3246">
         <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
         <span style="font-size:0.85em;">h</span>
         <select class="custom-forecast-model" title="Weather model">
-          <option value="gfs_seamless">GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025" selected>ECMWF OpenIFS</option><option value="icon_eu">ICON-EU</option><option value="icon_d2">ICON-D2</option>
+          <option value="gfs_seamless">NOAA GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu" selected>ICON-EU</option><option value="icon_d2">ICON-D2</option>
         </select>
-        <input type="color" class="custom-forecast-color" value="#ff00cc" title="Trajectory color">
+        <span class="custom-forecast-color-swatch" title="Fixed trajectory color (Windy scale)"></span>
+        <input type="hidden" class="custom-forecast-color" value="#FF69B4">
         <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
       </div>
-      <div class="custom-forecast-row">
-        <input type="checkbox" class="custom-forecast-enabled" checked>
-        <input type="number" class="custom-forecast-altitude" value="9843" min="0" max="65617" step="100" title="Altitude in feet">
-        <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
-        <span style="font-size:0.85em;">h</span>
-        <select class="custom-forecast-model" title="Weather model">
-          <option value="gfs_seamless">GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu" selected>ICON-EU</option><option value="icon_d2">ICON-D2</option>
-        </select>
-        <input type="color" class="custom-forecast-color" value="#00ff44" title="Trajectory color">
-        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
-      </div>
-      <div class="custom-forecast-row">
-        <input type="checkbox" class="custom-forecast-enabled" checked>
-        <input type="number" class="custom-forecast-altitude" value="13123" min="0" max="65617" step="100" title="Altitude in feet">
-        <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
-        <span style="font-size:0.85em;">h</span>
-        <select class="custom-forecast-model" title="Weather model">
-          <option value="gfs_seamless">GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu">ICON-EU</option><option value="icon_d2" selected>ICON-D2</option>
-        </select>
-        <input type="color" class="custom-forecast-color" value="#ffd600" title="Trajectory color">
-        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
-      </div>
-      <div class="custom-forecast-row">
+      <div class="custom-forecast-row fixed-level-row">
         <input type="checkbox" class="custom-forecast-enabled">
-        <input type="number" class="custom-forecast-altitude" value="16404" min="0" max="65617" step="100" title="Altitude in feet">
+        <span class="custom-forecast-level-label" data-hpa="850" title="Fixed pressure level, not selectable">850 hPa</span>
+        <input type="hidden" class="custom-forecast-altitude" value="4781">
         <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
         <span style="font-size:0.85em;">h</span>
         <select class="custom-forecast-model" title="Weather model">
-          <option value="gfs_seamless">GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu" selected>ICON-EU</option><option value="icon_d2">ICON-D2</option>
+          <option value="gfs_seamless">NOAA GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu" selected>ICON-EU</option><option value="icon_d2">ICON-D2</option>
         </select>
-        <input type="color" class="custom-forecast-color" value="#00bfff" title="Trajectory color">
+        <span class="custom-forecast-color-swatch" title="Fixed trajectory color (Windy scale)"></span>
+        <input type="hidden" class="custom-forecast-color" value="#FFF800">
         <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto"> Auto</label>
+      </div>
+      <div class="custom-forecast-row fixed-level-row">
+        <input type="checkbox" class="custom-forecast-enabled" checked>
+        <span class="custom-forecast-level-label" data-hpa="800" title="Fixed pressure level, not selectable">800 hPa</span>
+        <input type="hidden" class="custom-forecast-altitude" value="6400">
+        <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
+        <span style="font-size:0.85em;">h</span>
+        <select class="custom-forecast-model" title="Weather model">
+          <option value="gfs_seamless">NOAA GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu" selected>ICON-EU</option><option value="icon_d2">ICON-D2</option>
+        </select>
+        <span class="custom-forecast-color-swatch" title="Fixed trajectory color (Windy scale)"></span>
+        <input type="hidden" class="custom-forecast-color" value="#00FF02">
+        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
+      </div>
+      <div class="custom-forecast-row fixed-level-row">
+        <input type="checkbox" class="custom-forecast-enabled" checked>
+        <span class="custom-forecast-level-label" data-hpa="700" title="Fixed pressure level, not selectable">700 hPa</span>
+        <input type="hidden" class="custom-forecast-altitude" value="9880">
+        <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
+        <span style="font-size:0.85em;">h</span>
+        <select class="custom-forecast-model" title="Weather model">
+          <option value="gfs_seamless">NOAA GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu" selected>ICON-EU</option><option value="icon_d2">ICON-D2</option>
+        </select>
+        <span class="custom-forecast-color-swatch" title="Fixed trajectory color (Windy scale)"></span>
+        <input type="hidden" class="custom-forecast-color" value="#007CFF">
+        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
+      </div>
+      <div class="custom-forecast-row fixed-level-row">
+        <input type="checkbox" class="custom-forecast-enabled" checked>
+        <span class="custom-forecast-level-label" data-hpa="600" title="Fixed pressure level, not selectable">600 hPa</span>
+        <input type="hidden" class="custom-forecast-altitude" value="13800">
+        <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
+        <span style="font-size:0.85em;">h</span>
+        <select class="custom-forecast-model" title="Weather model">
+          <option value="gfs_seamless">NOAA GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu" selected>ICON-EU</option><option value="icon_d2">ICON-D2</option>
+        </select>
+        <span class="custom-forecast-color-swatch" title="Fixed trajectory color (Windy scale)"></span>
+        <input type="hidden" class="custom-forecast-color" value="#F73C59">
+        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
+      </div>
+      <div class="custom-forecast-row fixed-level-row">
+        <input type="checkbox" class="custom-forecast-enabled" checked>
+        <span class="custom-forecast-level-label" data-hpa="500" title="Fixed pressure level, not selectable">500 hPa</span>
+        <input type="hidden" class="custom-forecast-altitude" value="18300">
+        <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
+        <span style="font-size:0.85em;">h</span>
+        <select class="custom-forecast-model" title="Weather model">
+          <option value="gfs_seamless">NOAA GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu" selected>ICON-EU</option><option value="icon_d2">ICON-D2</option>
+        </select>
+        <span class="custom-forecast-color-swatch" title="Fixed trajectory color (Windy scale)"></span>
+        <input type="hidden" class="custom-forecast-color" value="#FF00FF">
+        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto" checked> Auto</label>
       </div>
       <div class="custom-forecast-row">
         <input type="checkbox" class="custom-forecast-enabled">
@@ -1249,9 +1309,10 @@
         <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
         <span style="font-size:0.85em;">h</span>
         <select class="custom-forecast-model" title="Weather model">
-          <option value="gfs_seamless">GFS</option><option value="icon_seamless" selected>ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu">ICON-EU</option><option value="icon_d2">ICON-D2</option>
+          <option value="gfs_seamless">NOAA GFS</option><option value="icon_seamless" selected>ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu">ICON-EU</option><option value="icon_d2">ICON-D2</option>
         </select>
-        <input type="color" class="custom-forecast-color" value="#ff9800" title="Trajectory color">
+        <span class="custom-forecast-color-swatch" title="Auto color derived from the Windy scale (no free color choice)"></span>
+        <input type="hidden" class="custom-forecast-color" value="#C728FB">
         <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto"> Auto</label>
       </div>
       <div class="custom-forecast-row">
@@ -1260,9 +1321,10 @@
         <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
         <span style="font-size:0.85em;">h</span>
         <select class="custom-forecast-model" title="Weather model">
-          <option value="gfs_seamless">GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025" selected>ECMWF OpenIFS</option><option value="icon_eu">ICON-EU</option><option value="icon_d2">ICON-D2</option>
+          <option value="gfs_seamless">NOAA GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025" selected>ECMWF OpenIFS</option><option value="icon_eu">ICON-EU</option><option value="icon_d2">ICON-D2</option>
         </select>
-        <input type="color" class="custom-forecast-color" value="#ff00cc" title="Trajectory color">
+        <span class="custom-forecast-color-swatch" title="Auto color derived from the Windy scale (no free color choice)"></span>
+        <input type="hidden" class="custom-forecast-color" value="#4C7EF3">
         <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto"> Auto</label>
       </div>
       <div class="custom-forecast-row">
@@ -1271,9 +1333,10 @@
         <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
         <span style="font-size:0.85em;">h</span>
         <select class="custom-forecast-model" title="Weather model">
-          <option value="gfs_seamless">GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu">ICON-EU</option><option value="icon_d2" selected>ICON-D2</option>
+          <option value="gfs_seamless">NOAA GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu">ICON-EU</option><option value="icon_d2" selected>ICON-D2</option>
         </select>
-        <input type="color" class="custom-forecast-color" value="#00ff44" title="Trajectory color">
+        <span class="custom-forecast-color-swatch" title="Auto color derived from the Windy scale (no free color choice)"></span>
+        <input type="hidden" class="custom-forecast-color" value="#368EF2">
         <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto"> Auto</label>
       </div>
       <div class="custom-forecast-row">
@@ -1282,9 +1345,22 @@
         <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
         <span style="font-size:0.85em;">h</span>
         <select class="custom-forecast-model" title="Weather model">
-          <option value="gfs_seamless">GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu" selected>ICON-EU</option><option value="icon_d2">ICON-D2</option>
+          <option value="gfs_seamless">NOAA GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu" selected>ICON-EU</option><option value="icon_d2">ICON-D2</option>
         </select>
-        <input type="color" class="custom-forecast-color" value="#ffd600" title="Trajectory color">
+        <span class="custom-forecast-color-swatch" title="Auto color derived from the Windy scale (no free color choice)"></span>
+        <input type="hidden" class="custom-forecast-color" value="#368EF2">
+        <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto"> Auto</label>
+      </div>
+      <div class="custom-forecast-row">
+        <input type="checkbox" class="custom-forecast-enabled">
+        <input type="number" class="custom-forecast-altitude" value="32809" min="0" max="65617" step="100" title="Altitude in feet">
+        <input type="number" class="custom-forecast-duration" value="24" min="1" max="48" step="1" title="Forecast duration in hours" aria-label="Duration in hours">
+        <span style="font-size:0.85em;">h</span>
+        <select class="custom-forecast-model" title="Weather model">
+          <option value="gfs_seamless">NOAA GFS</option><option value="icon_seamless">ICON Global</option><option value="ecmwf_ifs025">ECMWF OpenIFS</option><option value="icon_eu" selected>ICON-EU</option><option value="icon_d2">ICON-D2</option>
+        </select>
+        <span class="custom-forecast-color-swatch" title="Auto color derived from the Windy scale (no free color choice)"></span>
+        <input type="hidden" class="custom-forecast-color" value="#368EF2">
         <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto"> Auto</label>
       </div>
       <button id="custom-forecast-apply" style="margin-top:8px;background:#333;color:#ffe066;border-radius:6px;padding:4px 10px;border:none;cursor:pointer;font-weight:bold;width:100%;">Calculate forecast</button>
@@ -1447,6 +1523,101 @@
     let liveForecastNextRefresh = 0;
     let customForecastNextRefresh = [];
     let customForecasts = [];
+
+    // Windy-style pressure-level color scale (975h-400h), used instead of a free color picker
+    const PRESSURE_COLOR_LEVELS = [
+      { hpa: 975, color: '#ffffff' },
+      { hpa: 950, color: '#ffa100' },
+      { hpa: 925, color: '#ffbfe4' },
+      { hpa: 900, color: '#FF69B4' },
+      { hpa: 850, color: '#FFF800' },
+      { hpa: 800, color: '#00FF02' },
+      { hpa: 700, color: '#007CFF' },
+      { hpa: 600, color: '#F73C59' },
+      { hpa: 500, color: '#FF00FF' },
+      { hpa: 400, color: '#368EF2' }
+    ];
+
+    function hexToRgb(hex) {
+      const [r, g, b] = hex.replace('#', '').match(/.{1,2}/g).map(v => parseInt(v, 16));
+      return { r, g, b };
+    }
+
+    function rgbToHex(r, g, b) {
+      return '#' + [r, g, b].map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('');
+    }
+
+    function altitudeFtToPressureHpa(altitudeFt) {
+      const meters = altitudeFt * 0.3048;
+      return 1013.25 * Math.pow(1 - meters / 44330, 5.255);
+    }
+
+    function hpaToAltitudeFt(hpa) {
+      const meters = 44330 * (1 - Math.pow(hpa / 1013.25, 1 / 5.255));
+      return meters / 0.3048;
+    }
+
+    // Interpolates/clamps the Windy color scale for pressures between (or beyond) the defined levels
+    function pressureToColor(hpa) {
+      const levels = PRESSURE_COLOR_LEVELS;
+      if (hpa >= levels[0].hpa) return levels[0].color;
+      if (hpa <= levels[levels.length - 1].hpa) return levels[levels.length - 1].color;
+      for (let i = 0; i < levels.length - 1; i++) {
+        const hi = levels[i], lo = levels[i + 1];
+        if (hpa <= hi.hpa && hpa >= lo.hpa) {
+          const t = (hi.hpa - hpa) / (hi.hpa - lo.hpa);
+          const c1 = hexToRgb(hi.color), c2 = hexToRgb(lo.color);
+          return rgbToHex(
+            c1.r + (c2.r - c1.r) * t,
+            c1.g + (c2.g - c1.g) * t,
+            c1.b + (c2.b - c1.b) * t
+          );
+        }
+      }
+      return levels[levels.length - 1].color;
+    }
+
+    function levelColorForHpa(hpa) {
+      const found = PRESSURE_COLOR_LEVELS.find(l => l.hpa === hpa);
+      return found ? found.color : pressureToColor(hpa);
+    }
+
+    function formatFL(altitudeFt) {
+      return 'FL' + String(Math.round(altitudeFt / 100)).padStart(3, '0');
+    }
+
+    // Fixed level rows have no selection control; pressure comes from the data-hpa attribute
+    function syncFixedLevelRow(row) {
+      const label = row.querySelector('.custom-forecast-level-label');
+      const altitude = row.querySelector('.custom-forecast-altitude');
+      const color = row.querySelector('.custom-forecast-color');
+      const swatch = row.querySelector('.custom-forecast-color-swatch');
+      if (!label) return;
+      const hpa = Number(label.dataset.hpa);
+      const altitudeFt = hpaToAltitudeFt(hpa);
+      altitude.value = Math.round(altitudeFt);
+      color.value = levelColorForHpa(hpa);
+      if (swatch) swatch.style.background = color.value;
+      label.textContent = `${hpa} hPa \u00b7 ${formatFL(altitudeFt)}`;
+    }
+
+    function syncFreeAltitudeRow(row) {
+      const altitude = row.querySelector('.custom-forecast-altitude');
+      const color = row.querySelector('.custom-forecast-color');
+      const swatch = row.querySelector('.custom-forecast-color-swatch');
+      const hpa = altitudeFtToPressureHpa(Number(altitude.value));
+      color.value = pressureToColor(hpa);
+      if (swatch) swatch.style.background = color.value;
+      altitude.title = `Altitude in feet (~${formatFL(Number(altitude.value))})`;
+    }
+
+    function syncAllForecastRowColors() {
+      document.querySelectorAll('.custom-forecast-row').forEach(row => {
+        if (row.querySelector('.custom-forecast-level-label')) syncFixedLevelRow(row);
+        else syncFreeAltitudeRow(row);
+      });
+    }
+
     let lastIconEuRequest = 0;
     let showLinearForecast = true;
     let linearForecastDuration = 24;
@@ -2672,7 +2843,7 @@
               const transition = findSolarTransitionPoint(visiblePoints[index - 1], point);
               addIconEuSunMarker(transition.point, transition.isSunset);
               const line = L.polyline(segmentPoints.concat(transition.point).map(item => [item.lat, item.lon]), {
-                color: segmentIsDaylight ? "#00e5ff" : "#0b3d5c",
+                color: segmentIsDaylight ? "#ffffff" : "#000000",
                 weight: 5,
                 opacity: 1,
                 dashArray: "2 6",
@@ -2709,7 +2880,7 @@
             }
           }
           const finalLine = L.polyline(segmentPoints.map(point => [point.lat, point.lon]), {
-            color: segmentIsDaylight ? "#00e5ff" : "#0b3d5c",
+            color: segmentIsDaylight ? "#ffffff" : "#000000",
             weight: 5,
             opacity: 1,
             dashArray: "2 6",
@@ -2742,12 +2913,12 @@
           iconEuSunMarkers.forEach(markerLayer => markerLayer.bringToFront());
 
           getFullHourPoints(visiblePoints).forEach(point => {
-            addTrajectoryHourMarker(point, "#00e5ff", iconEuTrajectoryMarkers);
+            addTrajectoryHourMarker(point, "#ffffff", iconEuTrajectoryMarkers);
           });
           addTrajectoryStartEndAltitudeMarkers(
             visiblePoints,
             `${Math.round(getLiveBarometricAltitudeFeet()).toLocaleString("en-US")} ft`,
-            "#00e5ff",
+            "#ffffff",
             iconEuTrajectoryMarkers
           );
     }
@@ -2795,37 +2966,46 @@
     }
 
     function saveCustomForecastSettings() {
-      const settings = Array.from(document.querySelectorAll('.custom-forecast-row')).map(row => ({
-        enabled: row.querySelector('.custom-forecast-enabled').checked,
-        altitude: row.querySelector('.custom-forecast-altitude').value,
-        duration: row.querySelector('.custom-forecast-duration').value,
-        model: row.querySelector('.custom-forecast-model').value,
-        autoRefresh: row.querySelector('.custom-forecast-auto').checked,
-        color: row.querySelector('.custom-forecast-color').value
-      }));
-      localStorage.setItem('mapCustomForecastSettings', JSON.stringify(settings));
+      const settings = Array.from(document.querySelectorAll('.custom-forecast-row')).map(row => {
+        const levelLabel = row.querySelector('.custom-forecast-level-label');
+        return {
+          hpa: levelLabel ? Number(levelLabel.dataset.hpa) : null,
+          enabled: row.querySelector('.custom-forecast-enabled').checked,
+          altitude: levelLabel ? null : row.querySelector('.custom-forecast-altitude').value,
+          duration: row.querySelector('.custom-forecast-duration').value,
+          model: row.querySelector('.custom-forecast-model').value,
+          autoRefresh: row.querySelector('.custom-forecast-auto').checked
+        };
+      });
+      localStorage.setItem('mapCustomForecastSettings_v2', JSON.stringify(settings));
     }
 
     function loadCustomForecastSettings() {
       try {
-        const settings = JSON.parse(localStorage.getItem('mapCustomForecastSettings') || 'null');
-        if (!Array.isArray(settings)) return;
-        document.querySelectorAll('.custom-forecast-row').forEach((row, index) => {
-          const saved = settings[index];
-          if (!saved) return;
-          const enabled = row.querySelector('.custom-forecast-enabled');
-          const altitude = row.querySelector('.custom-forecast-altitude');
-          const duration = row.querySelector('.custom-forecast-duration');
-          const model = row.querySelector('.custom-forecast-model');
-          const autoRefresh = row.querySelector('.custom-forecast-auto');
-          const color = row.querySelector('.custom-forecast-color');
-          if (typeof saved.enabled === 'boolean') enabled.checked = saved.enabled;
-          if (Number.isFinite(Number(saved.altitude))) altitude.value = saved.altitude;
-          if (Number.isFinite(Number(saved.duration))) duration.value = saved.duration;
-          if (typeof saved.model === 'string' && Array.from(model.options).some(option => option.value === saved.model)) model.value = saved.model;
-          if (typeof saved.autoRefresh === 'boolean') autoRefresh.checked = saved.autoRefresh;
-          if (typeof saved.color === 'string' && /^#[0-9a-f]{6}$/i.test(saved.color)) color.value = saved.color;
-        });
+        const settings = JSON.parse(localStorage.getItem('mapCustomForecastSettings_v2') || 'null');
+        if (Array.isArray(settings)) {
+          // Match fixed rows by pressure level and free rows by order, not raw index, since the row layout can change
+          const fixedByHpa = new Map(settings.filter(entry => entry && entry.hpa != null).map(entry => [Number(entry.hpa), entry]));
+          const freeQueue = settings.filter(entry => entry && entry.hpa == null);
+          let freeIndex = 0;
+          document.querySelectorAll('.custom-forecast-row').forEach(row => {
+            const levelLabel = row.querySelector('.custom-forecast-level-label');
+            const saved = levelLabel ? fixedByHpa.get(Number(levelLabel.dataset.hpa)) : freeQueue[freeIndex++];
+            if (!saved) return;
+            const enabled = row.querySelector('.custom-forecast-enabled');
+            const altitude = row.querySelector('.custom-forecast-altitude');
+            const duration = row.querySelector('.custom-forecast-duration');
+            const model = row.querySelector('.custom-forecast-model');
+            const autoRefresh = row.querySelector('.custom-forecast-auto');
+            if (typeof saved.enabled === 'boolean') enabled.checked = saved.enabled;
+            if (!levelLabel && Number.isFinite(Number(saved.altitude))) altitude.value = saved.altitude;
+            if (Number.isFinite(Number(saved.duration))) duration.value = saved.duration;
+            if (typeof saved.model === 'string' && Array.from(model.options).some(option => option.value === saved.model)) model.value = saved.model;
+            if (typeof saved.autoRefresh === 'boolean') autoRefresh.checked = saved.autoRefresh;
+          });
+        }
+        // Colors (and fixed-row levels) are always derived, never freely chosen or restored
+        syncAllForecastRowColors();
       } catch (error) {
         console.warn('Saved forecast settings could not be loaded:', error);
       }
@@ -3131,6 +3311,14 @@
     document.querySelectorAll('.custom-forecast-auto').forEach(input => {
       input.addEventListener('change', () => {
         if (input.checked) updateCustomForecasts();
+      });
+    });
+    // Free altitude rows outside 950h-500h: altitude stays freely selectable, color is still auto-derived
+    document.querySelectorAll('.custom-forecast-row:not(.fixed-level-row) .custom-forecast-altitude').forEach(input => {
+      input.addEventListener('input', () => {
+        syncFreeAltitudeRow(input.closest('.custom-forecast-row'));
+        readCustomForecastSettings();
+        renderAllCustomForecasts();
       });
     });
     loadCustomForecastSettings();

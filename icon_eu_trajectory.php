@@ -32,18 +32,6 @@ if ($lat === false || $lon === false || $altitude === false || $startTime === fa
 
 $pressureLevels = [1000, 975, 950, 925, 900, 850, 800, 700, 600, 500];
 $pressure = 1013.25 * pow(1 - min($altitude, 11000) / 44330, 5.255);
-$lowerPressure = min($pressureLevels);
-$upperPressure = max($pressureLevels);
-foreach ($pressureLevels as $level) {
-    if ($level <= $pressure && $level > $lowerPressure) {
-        $lowerPressure = $level;
-    }
-    if ($level >= $pressure && $level < $upperPressure) {
-        $upperPressure = $level;
-    }
-}
-$pressureWeight = $upperPressure === $lowerPressure ? 0.0 : ($pressure - $lowerPressure) / ($upperPressure - $lowerPressure);
-$pressureWeight = max(0.0, min(1.0, $pressureWeight));
 
 $variables = [];
 foreach ($pressureLevels as $level) {
@@ -69,6 +57,35 @@ if (!is_array($forecast) || !isset($forecast['hourly']['time'])) {
     echo json_encode(['error' => 'ICON-EU-Wetterdaten konnten nicht geladen werden']);
     exit;
 }
+
+// Some models (e.g. ecmwf_ifs025) don't provide every pressure level and return null values.
+// Bracketing must only use levels the selected model actually has data for, otherwise a
+// missing level silently contributes a "zero wind" vector and skews the direction.
+$availableLevels = array_values(array_filter($pressureLevels, function ($level) use ($forecast) {
+    $values = $forecast['hourly']["wind_speed_{$level}hPa"] ?? [];
+    foreach ($values as $value) {
+        if ($value !== null) return true;
+    }
+    return false;
+}));
+if (empty($availableLevels)) {
+    http_response_code(502);
+    echo json_encode(['error' => 'Für das gewählte Modell sind keine Druckflächen-Winddaten verfügbar']);
+    exit;
+}
+
+$lowerPressure = min($availableLevels);
+$upperPressure = max($availableLevels);
+foreach ($availableLevels as $level) {
+    if ($level <= $pressure && $level > $lowerPressure) {
+        $lowerPressure = $level;
+    }
+    if ($level >= $pressure && $level < $upperPressure) {
+        $upperPressure = $level;
+    }
+}
+$pressureWeight = $upperPressure === $lowerPressure ? 0.0 : ($pressure - $lowerPressure) / ($upperPressure - $lowerPressure);
+$pressureWeight = max(0.0, min(1.0, $pressureWeight));
 
 $times = $forecast['hourly']['time'];
 $timeStamps = array_map('strtotime', $times);
@@ -96,16 +113,30 @@ function interpolateSeries(array $values, array $timeStamps, int $timestamp): fl
     return 0.0;
 }
 
+// Converts wind speed/direction to east/north vector components per hourly sample,
+// so direction (a circular quantity) is never linearly interpolated directly.
+function windComponentSeries(array $speeds, array $directions): array {
+    $count = min(count($speeds), count($directions));
+    $east = [];
+    $north = [];
+    for ($index = 0; $index < $count; $index++) {
+        $speedMs = ((float) ($speeds[$index] ?? 0)) / 3.6;
+        $directionRad = deg2rad((float) ($directions[$index] ?? 0));
+        $east[$index] = -$speedMs * sin($directionRad);
+        $north[$index] = -$speedMs * cos($directionRad);
+    }
+    return [$east, $north];
+}
+
 function getInterpolatedWind(array $forecast, array $timeStamps, int $timestamp, int $lowerPressure, int $upperPressure, float $pressureWeight): array {
     $east = 0.0;
     $north = 0.0;
     foreach ([$lowerPressure, $upperPressure] as $index => $level) {
-        $speedKey = "wind_speed_{$level}hPa";
-        $directionKey = "wind_direction_{$level}hPa";
-        $speed = interpolateSeries($forecast['hourly'][$speedKey] ?? [], $timeStamps, $timestamp) / 3.6;
-        $direction = deg2rad(interpolateSeries($forecast['hourly'][$directionKey] ?? [], $timeStamps, $timestamp));
-        $levelEast = -$speed * sin($direction);
-        $levelNorth = -$speed * cos($direction);
+        $speeds = $forecast['hourly']["wind_speed_{$level}hPa"] ?? [];
+        $directions = $forecast['hourly']["wind_direction_{$level}hPa"] ?? [];
+        [$eastSeries, $northSeries] = windComponentSeries($speeds, $directions);
+        $levelEast = interpolateSeries($eastSeries, $timeStamps, $timestamp);
+        $levelNorth = interpolateSeries($northSeries, $timeStamps, $timestamp);
         $levelWeight = $index === 0 ? 1 - $pressureWeight : $pressureWeight;
         $east += $levelEast * $levelWeight;
         $north += $levelNorth * $levelWeight;
@@ -140,15 +171,14 @@ function movePoint(float $lat, float $lon, float $distance, float $bearing): arr
 $currentLat = (float) $lat;
 $currentLon = (float) $lon;
 $currentTime = $startTime;
-$airSpeed = (float) $speed * 0.514444;
-$courseRadians = deg2rad((float) $course);
 
 for ($seconds = $stepSeconds; $seconds <= $durationHours * 3600; $seconds += $stepSeconds) {
     $currentTime = $startTime + $seconds;
     [$windSpeed, $windDirection] = getInterpolatedWind($forecast, $timeStamps, $currentTime, $lowerPressure, $upperPressure, $pressureWeight);
     $windBearing = fmod($windDirection + 180, 360);
-    $eastVelocity = $airSpeed * sin($courseRadians) + $windSpeed * sin(deg2rad($windBearing));
-    $northVelocity = $airSpeed * cos($courseRadians) + $windSpeed * cos(deg2rad($windBearing));
+    // Free-floating balloon/sonde: the path is driven purely by wind, not by its current ground course/speed
+    $eastVelocity = $windSpeed * sin(deg2rad($windBearing));
+    $northVelocity = $windSpeed * cos(deg2rad($windBearing));
     $distance = hypot($eastVelocity, $northVelocity) * $stepSeconds;
     $bearing = rad2deg(atan2($eastVelocity, $northVelocity));
     [$currentLat, $currentLon] = movePoint($currentLat, $currentLon, $distance, $bearing);
