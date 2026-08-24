@@ -544,7 +544,7 @@
       <span id="trajektorie-list"></span>
     </div>
     <div id="custom-forecast-section">
-      <div style="font-weight:bold;">Live forecast levels (950h-500h fixed) / free altitudes (ft) / duration (h):</div>
+      <div class="calculated-forecast-settings" style="display:none;">
       <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
         <span>Live forecast:</span>
         <input id="menu-live-forecast-checkbox" type="checkbox" checked title="Show live forecast">
@@ -562,12 +562,14 @@
           Refresh
         </label>
       </div>
+      </div>
       <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
         <span>Linear forecast:</span>
         <input id="menu-linear-forecast-checkbox" type="checkbox" checked title="Show linear forecast">
         <input id="menu-linear-forecast-duration" type="number" value="24" min="1" max="48" step="1" title="Linear forecast duration in hours" style="width:58px;background:#111;color:#ffe066;border:1px solid #555;border-radius:4px;padding:3px 5px;">
         <span>h</span>
       </div>
+      <div class="calculated-forecast-settings" style="display:none;">
       <div class="custom-forecast-row fixed-level-row">
         <input type="checkbox" class="custom-forecast-enabled" checked>
         <span class="custom-forecast-level-label" data-hpa="950" title="Fixed pressure level, not selectable">950 hPa</span>
@@ -733,6 +735,7 @@
         <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto"> Auto</label>
       </div>
       <button id="custom-forecast-apply" style="margin-top:8px;background:#333;color:#ffe066;border-radius:6px;padding:4px 10px;border:none;cursor:pointer;font-weight:bold;width:100%;">Calculate forecast</button>
+      </div>
     </div>
     <div id="traj-file-section">
       <div style="display:flex;flex-direction:column;align-items:flex-start;">
@@ -780,11 +783,6 @@
           <span>Live</span>
         </label>
       </div>
-      <label style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-        <span>Linear forecast:</span>
-        <input id="linear-forecast-duration" type="number" value="24" min="1" max="48" step="1" style="width:58px;background:#111;color:#ffe066;border:1px solid #444;border-radius:6px;padding:3px 6px;">
-        <span>h</span>
-      </label>
       <button id="track-range-apply" style="background:#333;color:#ffe066;border-radius:6px;padding:4px 10px;border:none;cursor:pointer;font-weight:bold;align-self:stretch;">Show</button>
     </div>
   </div>
@@ -977,6 +975,7 @@
     let showLinearForecast = true;
     let linearForecastDuration = 24;
     let showIconEuForecast = true;
+    const showCalculatedForecastTrajectories = false;
     let lastKnownGpsData = null;
     let lastKnownCourse = 0;
     let lastKnownSpeed = 0;
@@ -1982,6 +1981,7 @@
 
     function updateIconEuTrajectory(forceFetch = true) {
       clearIconEuTrajectory();
+      if (!showCalculatedForecastTrajectories) return;
       if (!showIconEuForecast) return;
       if (!forceFetch && Array.isArray(cachedIconEuPoints)) {
         renderIconEuTrajectory(cachedIconEuPoints);
@@ -2190,6 +2190,7 @@
 
     function renderCustomForecast(forecast) {
       clearCustomForecast(forecast);
+      if (!showCalculatedForecastTrajectories) return;
       if (!forecast.enabled || !Array.isArray(forecast.points) || forecast.points.length < 2) return;
 
       forecast.layerGroup = L.layerGroup().addTo(map);
@@ -2274,6 +2275,7 @@
     }
 
     function updateCustomForecasts(forceManual = false) {
+      if (!showCalculatedForecastTrajectories) return;
       if (!lastKnownGpsData) return;
       saveCustomForecastSettings();
       readCustomForecastSettings();
@@ -2635,10 +2637,10 @@
     }
 
     function saveLinearForecastDuration() {
-      const input = document.getElementById('linear-forecast-duration');
+      const input = document.getElementById('menu-linear-forecast-duration');
+      if (!input) return;
       linearForecastDuration = Math.max(1, Math.min(48, Number(input.value) || 24));
       input.value = linearForecastDuration;
-      document.getElementById('menu-linear-forecast-duration').value = linearForecastDuration;
       localStorage.setItem('mapLinearForecastDuration', String(linearForecastDuration));
       updateExtrapolatedTrack();
     }
@@ -2646,8 +2648,8 @@
     function loadLinearForecastDuration() {
       const saved = Number(localStorage.getItem('mapLinearForecastDuration'));
       if (Number.isFinite(saved) && saved >= 1 && saved <= 48) linearForecastDuration = saved;
-      document.getElementById('linear-forecast-duration').value = linearForecastDuration;
-      document.getElementById('menu-linear-forecast-duration').value = linearForecastDuration;
+      const menuInput = document.getElementById('menu-linear-forecast-duration');
+      if (menuInput) menuInput.value = linearForecastDuration;
     }
 
     function centerOnGps() {
@@ -3218,7 +3220,6 @@
     trackFromInput.addEventListener('change', saveMapSettingsLocally);
     trackToInput.addEventListener('change', saveMapSettingsLocally);
     trackToLiveCheckbox.addEventListener('change', saveMapSettingsLocally);
-    document.getElementById('linear-forecast-duration').addEventListener('change', saveLinearForecastDuration);
     const menuLinearForecastCheckbox = document.getElementById('menu-linear-forecast-checkbox');
     const savedLinearForecast = localStorage.getItem('showLinearForecast');
     if (savedLinearForecast !== null) menuLinearForecastCheckbox.checked = savedLinearForecast === 'true';
@@ -3245,10 +3246,7 @@
         clearIconEuTrajectory();
       }
     });
-    document.getElementById('menu-linear-forecast-duration').addEventListener('change', function() {
-      document.getElementById('linear-forecast-duration').value = this.value;
-      saveLinearForecastDuration();
-    });
+    document.getElementById('menu-linear-forecast-duration').addEventListener('change', saveLinearForecastDuration);
 
     // Export-Funktion
     document.getElementById('export-settings-btn').addEventListener('click', function() {

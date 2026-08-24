@@ -139,6 +139,18 @@
       max-width: 340px;
       font-size: 1.7em;
     }
+    .course-arrow {
+      display: inline-block;
+      position: relative;
+      z-index: 10;
+      color: #ff00cc;
+      font-size: 1.3em;
+      line-height: 1;
+      margin-left: 6px;
+      text-shadow: 0 0 10px rgba(255, 0, 204, 0.8);
+      transform-origin: center;
+      pointer-events: none;
+    }
     .label {
       color: #aaa;
       font-size: 1.1em;
@@ -299,11 +311,24 @@
           <div class="med"><span id="hoehe_m">----</span> m</div>
           <div class="row">
             <span class="label">GPS Alt</span>
-            <span class="value" id="gps_alt">----</span>
+            <span class="value" id="gps_alt_ft">----</span> <span class="unit-big">ft</span>
+          </div>
+          <div class="row">
+            <span class="label">GPS Alt</span>
+            <span class="value" id="gps_alt_m">----</span> <span class="unit-big">m</span>
+          </div>
+          <div class="row">
+            <span class="label">QNH 1013</span>
+            <span class="value" id="qnh1013_alt_ft">----</span> <span class="unit-big">ft</span>
+          </div>
+          <div class="row">
+            <span class="label">QNH 1013</span>
+            <span class="value" id="qnh1013_alt_m">----</span> <span class="unit-big">m</span>
           </div>
           <div class="row">
             <span class="label">Track</span>
             <span class="value" id="gps_course">----</span> <span class="unit-big">°</span>
+            <span class="course-arrow" id="gps_course_arrow" aria-label="Course arrow">⬆</span>
           </div>
           <div class="row">
             <span class="label">Speed</span>
@@ -421,12 +446,20 @@
     }
 
     function updateDisplay(data) {
+      const gpsAltMeters = Number(data.gps_alt);
+      const qnh1013Feet = getBaroAltitudeAtQnh1013(data);
+
       document.getElementById('zeit').textContent = data.zeit;
       document.getElementById('qnh').textContent = "QNH " + data.qnh;
       document.getElementById('hoehe_ft').textContent = Number.isFinite(Number(data.hoehe_ft)) ? Math.round(Number(data.hoehe_ft)).toLocaleString("en-US") : "----";
       document.getElementById('hoehe_m').textContent = Number.isFinite(Number(data.hoehe_ft)) ? Math.round(Number(data.hoehe_ft) * 0.3048).toLocaleString("en-US") : "----";
-      document.getElementById('gps_alt').textContent = Number.isFinite(Number(data.gps_alt)) ? `${Math.round(Number(data.gps_alt) * 3.28084).toLocaleString("en-US")} ft (${Math.round(Number(data.gps_alt)).toLocaleString("en-US")} m)` : "----";
+      document.getElementById('gps_alt_ft').textContent = Number.isFinite(gpsAltMeters) ? Math.round(gpsAltMeters * 3.28084).toLocaleString("en-US") : "----";
+      document.getElementById('gps_alt_m').textContent = Number.isFinite(gpsAltMeters) ? Math.round(gpsAltMeters).toLocaleString("en-US") : "----";
+      document.getElementById('qnh1013_alt_ft').textContent = Number.isFinite(qnh1013Feet) ? Math.round(qnh1013Feet).toLocaleString("en-US") : "----";
+      document.getElementById('qnh1013_alt_m').textContent = Number.isFinite(qnh1013Feet) ? Math.round(qnh1013Feet * 0.3048).toLocaleString("en-US") : "----";
+      const courseValue = Number(data.gps_course);
       document.getElementById('gps_course').textContent = data.gps_course;
+      document.getElementById('gps_course_arrow').style.transform = `rotate(${Number.isFinite(courseValue) ? courseValue : 0}deg)`;
       document.getElementById('gps_speed').textContent = data.gps_speed;
       document.getElementById('peak').textContent = data.peak;
       document.getElementById('valley').textContent = data.valley;

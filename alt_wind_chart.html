@@ -176,6 +176,12 @@
       return 'age-red';
     }
 
+    function renderCourseArrow(course) {
+      const degrees = Number(course);
+      const safeDegrees = Number.isFinite(degrees) ? degrees : 0;
+      return `<span title="Course ${safeDegrees}°" style="display:inline-block;color:#00eaff;font-size:1.2em;line-height:1;transform:rotate(${safeDegrees}deg);">⬆</span>`;
+    }
+
     function render() {
       const now = new Date();
       const h = String(now.getUTCHours()).padStart(2, '0');
@@ -203,7 +209,7 @@
           alt: Number(altStr),
           alt_m: Math.round(Number(altStr) * 0.3048),
           track: last.track != null ? Math.round(last.track) : '--',
-          arrow: `<span style="color: #00eaff; font-size: 1.2em;">⬆</span>`,
+          arrow: renderCourseArrow(last.track),
           speed: last.speed != null ? Number(last.speed).toFixed(1) : '--',
           vario: last.vario != null ? Number(last.vario).toFixed(2) : '--',
           temp: last.temp != null ? Number(last.temp).toFixed(1) : '--',
