@@ -248,7 +248,8 @@
     }
     #trajektorie-controls.collapsed #traj-list-section,
     #trajektorie-controls.collapsed #traj-file-section,
-    #trajektorie-controls.collapsed #traj-buttons-section {
+    #trajektorie-controls.collapsed #traj-buttons-section,
+    #trajektorie-controls.collapsed #custom-forecast-section {
       display: none;
     }
     .traj-label {
@@ -853,6 +854,10 @@
           <div class="compass-info-block">
             <span id="compass-speed" style="font-size:1.5em; font-weight:bold;">--</span>
             <span style="font-size:1.1em;">kts</span>
+          </div>
+          <div class="compass-info-block">
+            <span id="compass-vario" style="font-size:1.5em; font-weight:bold;">--</span>
+            <span style="font-size:1.1em;">m/s</span>
           </div>
         </div>
       <div id="compass-arrow">&#8593;</div>
@@ -2945,6 +2950,8 @@
 
       document.getElementById('compass-alt').textContent = data.hoehe_ft || '--';
       document.getElementById('compass-speed').textContent = data.gps_speed || '--';
+      const varioValue = Number(data.vario);
+      document.getElementById('compass-vario').textContent = Number.isFinite(varioValue) ? varioValue.toFixed(1) : '--';
 
       let course = parseFloat(data.gps_course);
       if (!isNaN(course)) {

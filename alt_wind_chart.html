@@ -26,6 +26,7 @@
     .age-red { background: #660000; color: #ff5555; }
     .no-data { text-align: center; color: #ff6666; padding: 40px; font-size: 1.1em; }
     a.gps { color: #00eaff; text-decoration: underline; }
+    .course-arrow { display: inline-block; color: #00eaff; font-size: 1.2em; line-height: 1; transform-origin: center; }
   </style>
 </head>
 <body>
@@ -178,8 +179,8 @@
 
     function renderCourseArrow(course) {
       const degrees = Number(course);
-      const safeDegrees = Number.isFinite(degrees) ? degrees : 0;
-      return `<span title="Course ${safeDegrees}°" style="display:inline-block;color:#00eaff;font-size:1.2em;line-height:1;transform:rotate(${safeDegrees}deg);">⬆</span>`;
+      const safeDegrees = Number.isFinite(degrees) ? ((degrees % 360) + 360) % 360 : 0;
+      return `<span class="course-arrow" title="Course ${Math.round(safeDegrees)}°" style="transform:rotate(${safeDegrees}deg);">↑</span>`;
     }
 
     function render() {
