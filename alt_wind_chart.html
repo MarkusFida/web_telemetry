@@ -12,6 +12,7 @@
     h1 { text-align: center; color: #ffe066; margin: 20px 0 10px; }
     .status { text-align: center; color: #aaa; font-size: 0.9em; }
     .controls { text-align: center; margin: 15px 0; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    .action-controls { text-align: center; margin: 10px 20px 20px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
     select, button { padding: 6px 10px; border-radius: 4px; border: 1px solid #555; background: #222; color: #ffe066; cursor: pointer; font-size: 0.9em; }
     button.active { background: #ffe066; color: #222; font-weight: bold; }
     button:hover { background: #ffdd00; }
@@ -61,6 +62,13 @@
     </select></label>
     <button id="refresh">🔄 Refresh</button>
   </div>
+  <div class="action-controls">
+    <button id="copyLatLngBtn">act. Lat/Long copy</button>
+    <button id="copyLatBtn">Lat copy</button>
+    <button id="copyLngBtn">Long copy</button>
+    <button id="downloadKmlBtn">24h KML file</button>
+    <button id="downloadCsvBtn">DB to CSV</button>
+  </div>
   <div class="table-wrapper">
     <table>
       <thead>
@@ -94,6 +102,57 @@
     document.getElementById('step').addEventListener('change', e => { altStep = parseInt(e.target.value); load(); });
     document.getElementById('hours').addEventListener('change', e => { hoursBack = parseInt(e.target.value); load(); });
     document.getElementById('refresh').addEventListener('click', load);
+
+    function latestGpsRow() {
+      const rows = Object.values(altData).flat();
+      return rows.reverse().find(row => Number.isFinite(Number(row.lat)) && Number.isFinite(Number(row.lon))) || null;
+    }
+
+    function copyText(button, text, label) {
+      navigator.clipboard.writeText(text).then(() => {
+        button.textContent = 'copy done!';
+        setTimeout(() => { button.textContent = label; }, 1200);
+      });
+    }
+
+    document.getElementById('copyLatLngBtn').addEventListener('click', function() {
+      const row = latestGpsRow();
+      if (row) copyText(this, `${Number(row.lat).toFixed(6)}, ${Number(row.lon).toFixed(6)}`, 'act. Lat/Long copy');
+    });
+    document.getElementById('copyLatBtn').addEventListener('click', function() {
+      const row = latestGpsRow();
+      if (row) copyText(this, Number(row.lat).toFixed(6), 'Lat copy');
+    });
+    document.getElementById('copyLngBtn').addEventListener('click', function() {
+      const row = latestGpsRow();
+      if (row) copyText(this, Number(row.lon).toFixed(6), 'Long copy');
+    });
+
+    function downloadBlob(content, type, filename) {
+      const url = URL.createObjectURL(new Blob([content], { type }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    document.getElementById('downloadKmlBtn').addEventListener('click', () => {
+      fetch('vario_chart.php?hours=24').then(r => r.json()).then(rows => {
+        const coordinates = rows.filter(row => row.gps_lng && row.gps_lat)
+          .map(row => `${row.gps_lng},${row.gps_lat},${row.gps_alt || 0}`).join('\n');
+        const kml = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Wuzi Vario Track</name><Placemark><LineString><coordinates>${coordinates}</coordinates></LineString></Placemark></Document></kml>`;
+        downloadBlob(kml, 'application/vnd.google-earth.kml+xml', 'wuzi_vario_24h.kml');
+      });
+    });
+
+    document.getElementById('downloadCsvBtn').addEventListener('click', () => {
+      fetch('vario_db_all.php').then(r => r.json()).then(rows => {
+        if (!rows.length) return;
+        const csv = [Object.keys(rows[0]).join(';')].concat(rows.map(row => Object.values(row).map(value => String(value ?? '').replace(/[\r\n;]/g, ' ')).join(';'))).join('\r\n');
+        downloadBlob(csv, 'text/csv', 'wuzi_vario.csv');
+      });
+    });
 
     function load() {
       fetch(`vario_chart.php?hours=${hoursBack}`)
