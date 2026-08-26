@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wuzi Vario Chart Only</title>
+  <style>
+    body { background: #181818; color: #fff; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+    #chart-panel { width: 100vw; height: 100vh; max-width: 100vw; max-height: 100vh; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; background: #181818; }
+    #top-nav { margin: 12px 0 0 24px; }
+    #top-nav a { margin-right: 6px; }
+    #controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 18px;
+      margin: 8px 30px 0 0;
+    }
+    .zoom-inputs input { width: 70px; font-size: 1em; margin-left: 4px; margin-right: 10px; border-radius: 4px; border: 1px solid #444; background: #222; color: #ffe066; padding: 2px 6px; }
+    .zoom-inputs, .window-range, .history-range { display: flex; align-items: center; }
+    .zoom-inputs label, .window-range label, .history-range label { color: #ffe066; font-size: 1.05em; margin-right: 4px; }
+    #applyYZoomBtn, #autoYBtn, #jumpToNowBtn {
+      font-size:1em; padding:4px 12px; border-radius:6px; background:#333; color:#ffe066; border:none; cursor:pointer; margin-left: 6px;
+    }
+    #jumpToNowBtn { margin-left: 14px; }
+    #slider-wrap { width: 98vw; margin: 0 auto 8px auto; display: flex; align-items: center; gap: 12px; }
+    #slider-label { color: #ffe066; font-size: 1.1em; }
+    #slider-time { color: #ffe066; font-size: 1.1em; }
+    #timeSlider { flex: 1 1 0; min-width: 120px; }
+    #date-info { color:#ffe066; font-size:1.1em; text-align:right; margin:0 30px 5px 0; }
+    #varioChart { width: 98vw !important; height: 80vh !important; max-height: 85vh; background: #181818; border-radius: 14px; margin: 0 auto; display: block; }
+    @media (max-width: 900px) { #varioChart { height: 60vh !important; } }
+  </style>
+</head>
+<body>
+  <div id="top-nav">
+    <a href="live.html" target="_blank" style="color:#ffe066;font-size:1.15em;text-decoration:none;background:#333;padding:5px 14px;border-radius:8px;">Live data</a>
+    <a href="chart_1.html" target="_blank" style="color:#ffe066;font-size:1.15em;text-decoration:none;background:#333;padding:5px 14px;border-radius:8px;">chart</a>
+    <a href="alt_wind_chart.html" target="_blank" style="color:#ffe066;font-size:1.15em;text-decoration:none;background:#333;padding:5px 14px;border-radius:8px;">Alt/Wind data</a>
+    <a href="ballast_drop.html" target="_blank" style="color:#ffe066;font-size:1.15em;text-decoration:none;background:#333;padding:5px 14px;border-radius:8px;">Ballast Drop Times</a>
+    <a href="map.html" target="_blank" style="color:#ffe066;font-size:1.15em;text-decoration:none;background:#333;padding:5px 14px;border-radius:8px;">map</a>
+    <a href="csv.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">csv chart</a>
+  </div>
+  <div id="chart-panel">
+    <div id="controls-bar">
+      <span class="zoom-inputs">
+        <button id="jumpToNowBtn">Jump to now</button>
+        <label for="yMinInput" style="margin-left:14px;">Height min:</label>
+        <input type="number" id="yMinInput" value="" placeholder="min" step="1">
+        <label for="yMaxInput">max:</label>
+        <input type="number" id="yMaxInput" value="" placeholder="max" step="1">
+        <button id="applyYZoomBtn">Set</button>
+        <button id="autoYBtn">Auto</button>
+      </span>
+      <span class="window-range">
+        <label for="chartRange">Window:</label>
+        <select id="chartRange" style="font-size:1em;">
+          <option value="0.0833">5 min</option>
+          <option value="0.1667">10 min</option>
+          <option value="0.3333">20 min</option>
+          <option value="0.5">30 min</option>
+          <option value="1">1 h</option>
+          <option value="2" selected>2 h</option>
+          <option value="6">6 h</option>
+          <option value="12">12 h</option>
+          <option value="24">24 h</option>
+        </select>
+      </span>
+      <span class="history-range">
+        <label for="historyRange">History:</label>
+        <select id="historyRange" style="font-size:1em;">
+          <option value="6">6 h</option>
+          <option value="12">12 h</option>
+          <option value="24">24 h</option>
+          <option value="48" selected>48 h</option>
+          <option value="72">72 h</option>
+          <option value="168">7 days</option>
+        </select>
+      </span>
+    </div>
+    <div id="slider-wrap">
+      <span id="slider-label">Scroll:</span>
+      <input type="range" id="timeSlider" min="0" max="100" value="100" step="1">
+      <span id="slider-time"></span>
+    </div>
+    <div id="date-info"></div>
+    <canvas id="varioChart"></canvas>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@4.1.1"></script>
+  <script>
+    let varioChart;
+    let lastBaroMin = null, lastBaroMax = null;
+    let chartLabels = [];
+    let sliderMax = 100;
+    let sliderWindow = 60; // wird dynamisch gesetzt
+    let userScrolled = false;
+    let historyHours = 48; // Standardwert für History
+
+    // Automatisches Update steuern
+    let autoUpdate = true;
+    let updateInterval = null;
+
+    // Merker: Bei F5 immer zu "jetzt" springen
+    let initialLoad = true;
+
+    function startAutoUpdate() {
+      if (updateInterval) clearInterval(updateInterval);
+      updateInterval = setInterval(() => {
+        if (autoUpdate) fetchChartData();
+      }, 20000);
+    }
+
+    function stopAutoUpdate() {
+      if (updateInterval) {
+        clearInterval(updateInterval);
+        updateInterval = null;
+      }
+    }
+
+    function loadY2Limits() {
+      const min = localStorage.getItem('y2min');
+      const max = localStorage.getItem('y2max');
+      return {
+        min: min !== null ? parseFloat(min) : null,
+        max: max !== null ? parseFloat(max) : null
+      };
+    }
+
+    function saveY2Limits(min, max) {
+      localStorage.setItem('y2min', min);
+      localStorage.setItem('y2max', max);
+    }
+
+    function showDateInfo(labels) {
+      const infoDiv = document.getElementById('date-info');
+      if (!labels.length) {
+        infoDiv.textContent = '';
+        return;
+      }
+      function extractDateTime(label) {
+        let match = label.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})/);
+        if (match) return `${match[1]} ${match[2]}`;
+        match = label.match(/^(\d{2}\.\d{2}\.\d{4}) (\d{2}:\d{2}:\d{2})/);
+        if (match) return `${match[1]} ${match[2]}`;
+        match = label.match(/^(\d{2}:\d{2}:\d{2})$/);
+        if (match) {
+          const today = new Date();
+          const yyyy = today.getUTCFullYear();
+          const mm = String(today.getUTCMonth() + 1).padStart(2, '0');
+          const dd = String(today.getUTCDate()).padStart(2, '0');
+          return `${yyyy}-${mm}-${dd} ${match[1]}`;
+        }
+        return label;
+      }
+      const first = extractDateTime(labels[0]);
+      const last = extractDateTime(labels[labels.length - 1]);
+      infoDiv.textContent = first === last
+        ? `time (UTC): ${first}`
+        : `from (UTC): ${first} to ${last}`;
+    }
+
+    function updateSlider(labels) {
+      chartLabels = labels;
+      const slider = document.getElementById('timeSlider');
+      if (!labels.length) {
+        slider.disabled = true;
+        document.getElementById('slider-time').textContent = '';
+        return;
+      }
+      slider.disabled = false;
+      slider.max = Math.max(0, labels.length - sliderWindow);
+      sliderMax = slider.max;
+      // Bei initialem Laden (F5): immer ganz rechts (aktuelle Daten)
+      if (initialLoad) {
+        slider.value = slider.max;
+        userScrolled = false;
+        initialLoad = false;
+        updateSliderTime();
+        applySliderView();
+      } else if (parseInt(slider.value, 10) > slider.max) {
+        slider.value = slider.max;
+        updateSliderTime();
+        applySliderView();
+      } else {
+        updateSliderTime();
+        // KEIN applySliderView() hier!
+      }
+    }
+
+    function updateSliderTime() {
+      const slider = document.getElementById('timeSlider');
+      const idx = parseInt(slider.value, 10);
+      if (!chartLabels.length) {
+        document.getElementById('slider-time').textContent = '';
+        return;
+      }
+      const first = chartLabels[idx];
+      const last = chartLabels[Math.min(idx + sliderWindow - 1, chartLabels.length - 1)];
+      document.getElementById('slider-time').textContent = first && last ? `${first} ... ${last}` : '';
+    }
+
+    function applySliderView() {
+      const slider = document.getElementById('timeSlider');
+      const idx = parseInt(slider.value, 10);
+      userScrolled = (slider.value != slider.max);
+
+      // Auto-Update nur, wenn ganz rechts
+      if (slider.value == slider.max) {
+        if (!autoUpdate) {
+          autoUpdate = true;
+          startAutoUpdate();
+        }
+      } else {
+        if (autoUpdate) {
+          autoUpdate = false;
+          stopAutoUpdate();
+        }
+      }
+
+      if (!chartLabels.length || !varioChart) return;
+      const minIdx = idx;
+      const maxIdx = Math.min(idx + sliderWindow - 1, chartLabels.length - 1);
+      varioChart.options.scales.x.min = chartLabels[minIdx];
+      varioChart.options.scales.x.max = chartLabels[maxIdx];
+      varioChart.update();
+      updateSliderTime();
+    }
+
+    // Autoskalierung nur auf sichtbaren Bereich
+    function autoScaleBaroAlt() {
+      if (!varioChart || !chartLabels.length) return;
+      const slider = document.getElementById('timeSlider');
+      const idx = parseInt(slider.value, 10);
+      const minIdx = idx;
+      const maxIdx = Math.min(idx + sliderWindow - 1, chartLabels.length - 1);
+      const baroData = varioChart.data.datasets[2].data.slice(minIdx, maxIdx + 1).filter(v => v !== null && !isNaN(v));
+      if (baroData.length === 0) return;
+      const minAlt = Math.min(...baroData);
+      const maxAlt = Math.max(...baroData);
+      varioChart.options.scales.y2.min = minAlt;
+      varioChart.options.scales.y2.max = maxAlt;
+      document.getElementById('yMinInput').value = minAlt;
+      document.getElementById('yMaxInput').value = maxAlt;
+      varioChart.update();
+    }
+
+    document.getElementById('timeSlider').addEventListener('input', applySliderView);
+
+    function fetchChartData() {
+      fetch('vario_chart.php?hours=' + historyHours)
+        .then(r => r.json())
+        .then(rows => {
+          const labels = rows.map(row => row.datetime || row.gps_time || row.ts || '');
+          showDateInfo(labels);
+
+          const hours = parseFloat(document.getElementById('chartRange').value);
+          const pointsPerHour = 360;
+          sliderWindow = Math.max(1, Math.round(hours * pointsPerHour));
+          updateSlider(labels);
+
+          // --- NEU: Slider im Auto-Modus immer ganz rechts halten --- 
+          const slider = document.getElementById('timeSlider');
+          if (autoUpdate && slider.value != slider.max) {
+            slider.value = slider.max;
+            applySliderView();
+          }
+
+          const track = rows.map(row => Math.max(0, Math.round(row.track)));
+          const speed = rows.map(row => Math.max(0, Number(row.speed).toFixed(1)));
+          const baro_alt = rows.map(row => Math.round(row.baro_alt));
+          const temp = rows.map(row => typeof row.temp !== "undefined" ? Number(row.temp) : null);
+          const vario = rows.map(row => typeof row.vario !== "undefined" ? Number(row.vario) : null);
+
+          const peakData = rows.map(row => row.peak && Number(row.peak) > 0 ? Number(row.peak) : null);
+          const valleyData = rows.map(row => row.valley && Number(row.valley) > 0 ? Number(row.valley) : null);
+
+          // --- RH (Luftfeuchte) hinzufügen ---
+          const humidity = rows.map(row => typeof row.humidity !== "undefined" ? Number(row.humidity) : null);
+
+          // --- Ballast Drop Count hinzufügen (nicht negativ) ---
+          const ballast_drop_count = rows.map(row => {
+            const val = typeof row.ballast_drop_count !== "undefined" ? Number(row.ballast_drop_count) : null;
+            return val !== null && val >= 0 ? val : 0;  // Nicht negativ
+          });
+
+          const baroPointStyles = baro_alt.map(() => 'circle');
+          const baroPointRadius = baro_alt.map(() => 0);
+          const baroPointBackground = baro_alt.map(() => '#ffd600');
+
+          let minAlt = Math.min(...baro_alt.filter(v => !isNaN(v)));
+          let maxAlt = Math.max(...baro_alt.filter(v => !isNaN(v)));
+          lastBaroMin = minAlt;
+          lastBaroMax = maxAlt;
+
+          const useMin = minAlt;
+          const useMax = maxAlt;
+          document.getElementById('yMinInput').value = useMin;
+          document.getElementById('yMaxInput').value = useMax;
+          saveY2Limits(useMin, useMax);
+
+          if (!varioChart) {
+            const ctx = document.getElementById('varioChart').getContext('2d');
+            varioChart = new Chart(ctx, {
+              type: 'line',
+              data: {
+                labels: labels,
+                datasets: [
+                  {
+                    label: 'Track (°)',
+                    data: track,
+                    borderColor: '#00ff44',
+                    backgroundColor: 'rgba(0,255,68,0.15)',
+                    yAxisID: 'y',
+                    tension: 0.1,
+                    pointRadius: 0,
+                    borderWidth: 3,
+                    hidden: false
+                  },
+                  {
+                    label: 'Speed (kts)',
+                    data: speed,
+                    borderColor: '#00d8ff',
+                    backgroundColor: 'rgba(0,216,255,0.15)',
+                    yAxisID: 'y1',
+                    tension: 0.1,
+                    pointRadius: 0,
+                    borderWidth: 3,
+                    hidden: false
+                  },
+                  {
+                    label: 'Baro Alt (ft)',
+                    data: baro_alt,
+                    borderColor: '#ffd600',
+                    backgroundColor: 'rgba(255,214,0,0.15)',
+                    yAxisID: 'y2',
+                    tension: 0.1,
+                    pointStyle: baroPointStyles,
+                    pointRadius: baroPointRadius,
+                    pointBackgroundColor: baroPointBackground,
+                    borderWidth: 3,
+                    hidden: false
+                  },
+                  {
+                    label: 'Vario (m/s)',
+                    data: vario,
+                    borderColor: '#ff00ff',
+                    backgroundColor: 'rgba(255,0,255,0.10)',
+                    yAxisID: 'y4',
+                    tension: 0.1,
+                    pointRadius: 0,
+                    borderWidth: 3,
+                    hidden: false
+                  },
+                  {
+                    label: 'Peak',
+                    data: peakData,
+                    borderColor: '#ff00ff',
+                    backgroundColor: '#ff00ff',
+                    yAxisID: 'y2',
+                    pointStyle: 'line',
+                    pointRadius: 0,
+                    pointBackgroundColor: '#ff00ff',
+                    borderWidth: 4,
+                    showLine: true,
+                    spanGaps: true,
+                    hidden: false
+                  },
+                  {
+                    label: 'Valley',
+                    data: valleyData,
+                    borderColor: '#00ffff',
+                    backgroundColor: '#00ffff',
+                    yAxisID: 'y2',
+                    pointStyle: 'line',
+                    pointRadius: 0,
+                    pointBackgroundColor: '#00ffff',
+                    borderWidth: 4,
+                    showLine: true,
+                    spanGaps: true,
+                    hidden: false
+                  },
+                  {
+                    label: 'Temp (°C)',
+                    data: temp,
+                    borderColor: '#ff6600',
+                    backgroundColor: 'rgba(255,102,0,0.10)',
+                    yAxisID: 'y3',
+                    tension: 0.1,
+                    pointRadius: 0,
+                    borderWidth: 3,
+                    hidden: false
+                  },
+                  {
+                    label: 'humidity (%)',
+                    data: humidity,
+                    borderColor: '#00ffea',
+                    backgroundColor: 'rgba(0,255,234,0.10)',
+                    yAxisID: 'y5',
+                    tension: 0.1,
+                    pointRadius: 0,
+                    borderWidth: 3,
+                    hidden: false
+                  },
+                  {
+                    label: 'Ballast Drop Count',
+                    data: ballast_drop_count,
+                    borderColor: '#ff4444',
+                    backgroundColor: 'rgba(255,68,68,0.10)',
+                    yAxisID: 'y6',
+                    tension: 0.1,
+                    pointRadius: 0,
+                    borderWidth: 3,
+                    hidden: false
+                  }
+                ]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                stacked: false,
+                plugins: {
+                  legend: {
+                    labels: { color: '#fff', font: { size: 18 } },
+                    onClick: function(e, legendItem, legend) {
+                      const ci = legend.chart;
+                      const idx = legendItem.datasetIndex;
+                      const meta = ci.getDatasetMeta(idx);
+                      meta.hidden = meta.hidden === null ? !ci.data.datasets[idx].hidden : null;
+                      ci.update();
+                    }
+                  },
+                  title: { display: true, text: historyHours + 'h scroll, window: ' + hours + 'h', color: '#fff', font: { size: 22 } },
+                  tooltip: {
+                    enabled: true,
+                    bodyFont: { size: 20 },
+                    titleFont: { size: 18 },
+                    padding: 16,
+                    boxPadding: 8,
+                    displayColors: true,
+                    backgroundColor: 'rgba(40,40,40,0.95)',
+                    borderColor: '#ffe066',
+                    borderWidth: 2,
+                    cornerRadius: 8
+                  }
+                },
+                scales: {
+                  x: {
+                    type: 'category',
+                    offset: false,
+                    title: {
+                      display: true,
+                      text: 'time (UTC)',
+                      color: '#ffe066',
+                      font: { size: 18 }
+                    },
+                    ticks: {
+                      color: '#fff',
+                      maxTicksLimit: 10,
+                      font: { size: 16 },
+                      callback: function(value, index, ticks) {
+                        const label = chartLabels && chartLabels[value] ? chartLabels[value] : value;
+                        if (typeof label === 'string') {
+                          const match = label.match(/\d{2}:\d{2}:\d{2}$/);
+                          if (match) return match[0];
+                        }
+                        return label;
+                      }
+                    },
+                    grid: { color: '#333' }
+                  },
+                  y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    min: 0,
+                    title: { display: true, text: 'Track (°)', color: '#00ff44', font: { size: 18 } },
+                    ticks: {
+                      color: '#00ff44',
+                      font: { size: 16 },
+                      callback: function(value) { return Math.max(0, Math.round(value)); }
+                    },
+                    grid: { color: '#333' }
+                  },
+                  y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    min: 0,
+                    title: { display: true, text: 'Speed (kts)', color: '#00d8ff', font: { size: 18 } },
+                    ticks: {
+                      color: '#00d8ff',
+                      font: { size: 16 },
+                      callback: function(value) { return Number(value).toFixed(1); }
+                    },
+                    grid: { drawOnChartArea: false }
+                  },
+                  y2: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    offset: true,
+                    title: { display: true, text: 'Baro Alt (ft)', color: '#ffd600', font: { size: 18 } },
+                    ticks: {
+                      color: '#ffd600',
+                      font: { size: 16 },
+                      callback: function(value) { return Math.round(value); }
+                    },
+                    grid: { drawOnChartArea: false },
+                    min: useMin,
+                    max: useMax
+                  },
+                  y3: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    offset: true,
+                    title: { display: true, text: 'Temp (°C)', color: '#ff6600', font: { size: 18 } },
+                    ticks: {
+                      color: '#ff6600',
+                      font: { size: 16 }
+                    },
+                    grid: { drawOnChartArea: false }
+                  },
+                  y4: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    offset: true,
+                    title: { display: true, text: 'Vario (m/s)', color: '#ff00ff', font: { size: 18 } },
+                    ticks: { color: '#ff00ff', font: { size: 16 } },
+                    grid: { drawOnChartArea: false }
+                  },
+                  y5: {
+                      type: 'linear',
+                      display: true,
+                      position: 'right',
+                      offset: true,
+                      title: { display: true, text: 'humidity (%)', color: '#00ffea', font: { size: 18 } },
+                      ticks: {
+                        color: '#00ffea',
+                        font: { size: 16 },
+                        callback: function(value) { return Number(value).toFixed(1); }
+                      },
+                      grid: { drawOnChartArea: false }
+                  },
+                  y6: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    offset: true,
+                    title: { display: true, text: 'Ballast Drop Count', color: '#ff4444', font: { size: 18 } },
+                    ticks: {
+                      color: '#ff4444',
+                      font: { size: 16 },
+                      callback: function(value) { return Math.round(value); }
+                    },
+                    grid: { drawOnChartArea: false },
+                    min: 0  // Neu hinzugefügt: Verhindert negative Skalierung
+                  }
+                }
+              },
+              plugins: [{
+                afterDraw: chart => {
+                  if (chart.tooltip && chart.tooltip._active && chart.tooltip._active.length) {
+                    const ctx = chart.ctx;
+                    ctx.save();
+                    const activePoint = chart.tooltip._active[0];
+                    ctx.beginPath();
+                    ctx.moveTo(activePoint.element.x, chart.chartArea.top);
+                    ctx.lineTo(activePoint.element.x, chart.chartArea.bottom);
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#ffe066';
+                    ctx.setLineDash([6, 6]);
+                    ctx.stroke();
+                    ctx.restore();
+                  }
+                }
+              }]
+            });
+          } else {
+            varioChart.data.labels = labels;
+            varioChart.data.datasets[0].data = track;
+            varioChart.data.datasets[1].data = speed;
+            varioChart.data.datasets[2].data = baro_alt;
+            varioChart.data.datasets[2].pointStyle = baroPointStyles;
+            varioChart.data.datasets[2].pointRadius = baroPointRadius;
+            varioChart.data.datasets[2].pointBackgroundColor = baroPointBackground;
+            varioChart.data.datasets[3].data = vario;
+            varioChart.data.datasets[4].data = peakData;
+            varioChart.data.datasets[5].data = valleyData;
+            varioChart.data.datasets[6].data = temp;
+            varioChart.data.datasets[7].data = humidity;
+            varioChart.data.datasets[8].data = ballast_drop_count;
+            varioChart.options.plugins.title.text = historyHours + 'h scroll, window: ' + hours + 'h';
+            varioChart.options.scales.y2.min = useMin;
+            varioChart.options.scales.y2.max = useMax;
+            document.getElementById('yMinInput').value = useMin;
+            document.getElementById('yMaxInput').value = useMax;
+            varioChart.update();
+          }
+        });
+    }
+
+    document.getElementById('applyYZoomBtn').addEventListener('click', function() {
+      if (!varioChart) return;
+      const min = parseFloat(document.getElementById('yMinInput').value);
+      const max = parseFloat(document.getElementById('yMaxInput').value);
+      if (!isNaN(min) && !isNaN(max) && min < max) {
+        varioChart.options.scales.y2.min = min;
+        varioChart.options.scales.y2.max = max;
+        saveY2Limits(min, max);
+        varioChart.update();
+      }
+    });
+
+    document.getElementById('autoYBtn').addEventListener('click', function() {
+      autoScaleBaroAlt();
+    });
+
+    document.getElementById('chartRange').addEventListener('change', function() {
+      if (varioChart) {
+        varioChart.options.scales.x.min = undefined;
+        varioChart.options.scales.x.max = undefined;
+        varioChart.update();
+      }
+      fetchChartData();
+    });
+
+    document.getElementById('historyRange').addEventListener('change', function() {
+      historyHours = parseInt(this.value, 10);
+      fetchChartData();
+    });
+
+    document.getElementById('jumpToNowBtn').addEventListener('click', function() {
+      const slider = document.getElementById('timeSlider');
+      slider.value = slider.max;
+      userScrolled = false;
+      if (!autoUpdate) {
+        autoUpdate = true;
+        startAutoUpdate();
+      }
+      applySliderView();
+    });
+
+    // Initiales Starten des Auto-Updates
+    startAutoUpdate();
+    fetchChartData();
+  </script>
+</body>
+</html>

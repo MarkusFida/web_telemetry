@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>EPR131 Restricted Area</name>
+    <description>
+      <![CDATA[
+      Start: 2026-06-10 00:00Z<br/>
+      End: 2026-09-09 23:59Z<br/>
+      Vertical limits: SFC/GND - FL095<br/>
+      Darstellung als offene Linie (kein automatischer Schluss von Punkt 20 auf Punkt 1).
+      ]]>
+    </description>
+
+    <Style id="epr131Style">
+      <LineStyle>
+        <color>ff2a2aff</color>
+        <width>3</width>
+      </LineStyle>
+    </Style>
+
+    <Placemark>
+      <name>EPR131 (SFC-FL095)</name>
+      <styleUrl>#epr131Style</styleUrl>
+      <description>
+        <![CDATA[
+        Restricted area EPR131<br/>
+        Validity: 10 Jun 2026 00:00Z - 09 Sep 2026 23:59Z<br/>
+        Vertical: SFC/GND - FL095
+        ]]>
+      </description>
+      <LineString>
+        <tessellate>1</tessellate>
+        <coordinates>
+          23.504444,53.966389,0
+          22.951944,53.897222,0
+          23.091667,53.491667,0
+          23.209722,53.322222,0
+          23.369167,52.861389,0
+          22.952222,52.700000,0
+          22.793611,52.275556,0
+          23.045000,51.878611,0
+          23.292500,51.141389,0
+          23.348889,50.769167,0
+          23.366667,50.654444,0
+          23.384167,50.499444,0
+          23.378056,50.439167,0
+          22.704444,50.004167,0
+          22.668333,49.899444,0
+          22.526667,49.819444,0
+          22.261667,49.579444,0
+          22.265278,49.442778,0
+          22.269722,49.270278,0
+          22.375278,49.138333,0
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>

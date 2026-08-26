@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Track Profile Table</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { background: #181818; color: #fff; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; }
+    h1 { text-align: center; margin-top: 30px; color: #ffe066; }
+    .track-table-container { 
+      display: flex; 
+      justify-content: center; 
+      margin-top: 40px; 
+      overflow-x: auto; 
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    table { 
+      border-collapse: collapse; 
+      background: #222; 
+      border-radius: 14px; 
+      overflow: hidden; 
+      box-shadow: 0 0 16px #000a; 
+      min-width: 900px; 
+      font-size: 1.1em; 
+    }
+    th, td { padding: 8px 8px; text-align: center; }
+    th { 
+      background: #333; 
+      color: #ffe066; 
+      font-size: 1em; 
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    tr:nth-child(even) td { background: #232323; }
+    tr:nth-child(odd) td { background: #222; }
+    .no-data { color: #ff6666; font-size: 1em; text-align: center; padding: 20px; }
+    .track-arrow { display: inline-block; font-size: 1.5em; transition: transform 0.2s; color: #00eaff; vertical-align: middle; }
+    .age-yellow { background: #444400 !important; color: #ffe066 !important; }
+    .age-orange { background: #664400 !important; color: #ffb300 !important; }
+    .age-red { background: #660000 !important; color: #ff6666 !important; }
+    .sort-controls { text-align: center; margin-top: 18px; color: #ffe066; font-size: 1em; flex-wrap: wrap; }
+    .sort-controls select, .sort-controls button { font-size: 1em; margin-left: 6px; margin-right: 6px; border-radius: 4px; border: 1px solid #444; background: #222; color: #ffe066; padding: 2px 8px; cursor: pointer; }
+    .sort-controls button.active { background: #ffe066; color: #222; font-weight: bold; }
+    .refresh-btn { margin-left: 16px; background: #ffe066; color: #222; border: none; border-radius: 6px; padding: 4px 12px; font-size: 1em; font-weight: bold; cursor: pointer; }
+    a.gps-link { color: #00eaff; text-decoration: underline; }
+    tbody tr { border-bottom: 1.5px solid #444; }
+    tbody tr:last-child { border-bottom: none; }
+    @media (max-width: 900px) {
+      table { min-width: 700px; font-size: 0.95em; }
+      th, td { padding: 6px 4px; }
+      .track-table-container { margin-top: 20px; }
+    }
+    @media (max-width: 600px) {
+      table { min-width: 500px; font-size: 0.85em; }
+      th, td { padding: 4px 2px; }
+      h1 { font-size: 1.1em; margin-top: 10px; }
+      .sort-controls { font-size: 0.95em; }
+    }
+    @media (max-width: 480px) {
+      table { min-width: 400px; font-size: 0.75em; }
+      th, td { padding: 2px 1px; }
+      .sort-controls { font-size: 0.9em; }
+    }
+  </style>
+</head>
+<body>
+  <div style="margin:18px 0 0 30px;">
+    <a href="live.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">Live data</a>
+    <a href="chart_1.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">chart</a>
+    <a href="alt_wind_chart.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">Alt/Wind data</a>
+    <a href="ballast_drop.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">Ballast Drop Times</a>
+    <a href="map.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">map</a>
+    <a href="csv.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">csv chart</a>
+  </div>
+  <h1>Track Profile by Altitude</h1>
+  <div style="text-align:center; color:#ffe066; margin-top:10px; font-size:1.1em;">
+    Last update (UTC): <span id="lastUpdate">--:--:--</span>
+  </div>
+  <div class="sort-controls">
+    Sort by:
+    <select id="sortColumn">
+      <option value="alt" selected>Altitude [ft]</option>
+      <option value="alt_m">Altitude [m]</option>
+      <option value="track">Course [°]</option>
+      <option value="speed">Speed [kts]</option>
+      <option value="vario">Vario [m/s]</option>
+      <option value="temp">Temp [°C]</option>
+      <option value="time">UTC</option>
+      <option value="age">Age</option>
+    </select>
+    <button id="sortAscBtn" class="active">&#9650; Ascending</button>
+    <button id="sortDescBtn">&#9660; Descending</button>
+    <label style="margin-left:16px;">Step:</label>
+    <select id="altStepSelect">
+      <option value="50" selected>50 ft</option>
+      <option value="100">100 ft</option>
+      <option value="200">200 ft</option>
+      <option value="500">500 ft</option>
+      <option value="1000">1000 ft</option>
+    </select>
+    <label style="margin-left:10px;">Time:</label>
+    <select id="hoursSelect">
+      <option value="1">1 h</option>
+      <option value="3">3 h</option>
+      <option value="6">6 h</option>
+      <option value="12" selected>12 h</option>
+      <option value="24">24 h</option>
+    </select>
+    <button class="refresh-btn" id="refreshBtn" title="Reload data">Refresh</button>
+  </div>
+  <div class="track-table-container">
+    <table id="trackTable">
+      <thead>
+        <tr>
+          <th>Altitude [ft]</th>
+          <th>Altitude [m]</th>
+          <th>Course [°]</th>
+          <th>Course</th>
+          <th>Speed [kts]</th>
+          <th>Vario [m/s]</th>
+          <th>Temp [°C]</th>
+          <th>Humidity [%]</th>
+          <th>UTC</th>
+          <th>Age</th>
+          <th>GPS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="11" class="no-data">loading data...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <script>
+    function getAgeMinutes(timestr) {
+      if (!timestr || timestr.length < 5) return null;
+      let nowUTC = new Date();
+      let t;
+      if (timestr.length > 8) {
+        t = new Date(timestr.replace(" ", "T") + "Z");
+      } else {
+        let [h, m, s] = timestr.split(":");
+        let tToday = new Date(Date.UTC(nowUTC.getUTCFullYear(), nowUTC.getUTCMonth(), nowUTC.getUTCDate(), h, m, s || 0));
+        let tYesterday = new Date(tToday.getTime() - 24 * 60 * 60 * 1000);
+        t = tToday > nowUTC ? tYesterday : tToday;
+      }
+      return Math.round((nowUTC.getTime() - t.getTime()) / 60000);
+    }
+    function formatAgeHM(mins) {
+      if (mins == null || isNaN(mins)) return "--";
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      return h > 0 ? `${h}h ${m}min` : `${m}min`;
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', function() {
+      updateTrackTable();
+    });
+
+    let sortColumn = 'alt';
+    let sortAsc = true;
+    let altStep = 50;
+    let hoursBack = 12;
+
+    document.getElementById('sortColumn').addEventListener('change', function() {
+      sortColumn = this.value;
+      updateTrackTable();
+    });
+    document.getElementById('sortAscBtn').addEventListener('click', function() {
+      sortAsc = true;
+      this.classList.add('active');
+      document.getElementById('sortDescBtn').classList.remove('active');
+      updateTrackTable();
+    });
+    document.getElementById('sortDescBtn').addEventListener('click', function() {
+      sortAsc = false;
+      this.classList.add('active');
+      document.getElementById('sortAscBtn').classList.remove('active');
+      updateTrackTable();
+    });
+
+    document.getElementById('altStepSelect').addEventListener('change', function() {
+      altStep = parseInt(this.value, 10);
+      updateTrackTable();
+    });
+    document.getElementById('hoursSelect').addEventListener('change', function() {
+      hoursBack = parseFloat(this.value);
+      updateTrackTable();
+    });
+
+    async function updateTrackTable() {
+      const now = new Date();
+      const pad = n => n.toString().padStart(2, '0');
+      const utcStr = pad(now.getUTCHours()) + ":" + pad(now.getUTCMinutes()) + ":" + pad(now.getUTCSeconds());
+      document.getElementById('lastUpdate').textContent = utcStr;
+
+      fetch('vario_chart.php?hours=' + hoursBack)
+        .then(r => r.json())
+        .then(rows => {
+          // Filter direkt nach dem Laden!
+          const now = new Date();
+          rows = rows.filter(row => {
+            // Fehlerhafte Default-Daten rausfiltern
+            if (
+              row.gps_time === "2007-08-09 22:00:00.000000" ||
+              row.ts === "2007-08-09 22:00:00.000000" ||
+              row.gps_time === "0000-00-00 00:00:00" ||
+              row.ts === "0000-00-00 00:00:00"
+            ) return false;
+            let dateStr = row.gps_time || row.ts;
+            if (!dateStr) return false;
+            // Prüfe, ob dateStr ein volles Datum ist (mindestens 10 Zeichen und enthält '-')
+            if (dateStr.length >= 10 && dateStr.includes('-')) {
+              let year = parseInt(dateStr.substring(0, 4), 10);
+              if (isNaN(year) || year < 2025) return false;
+            }
+            // Alter prüfen basierend auf hoursBack (in Minuten)
+            let ageMin = getAgeMinutes(dateStr);
+            if (ageMin === null || ageMin > hoursBack * 60) return false;  // Geändert zu hoursBack * 60
+            return true;
+          });
+
+          // Binning nach Altitude
+          const bins = {};
+          rows.forEach(row => {
+            const alt = row.baro_alt !== undefined ? Math.round(row.baro_alt / altStep) * altStep : null;
+            if (alt === null) return;
+            if (!bins[alt]) bins[alt] = {track: [], speed: [], temp: [], humidity: [], vario: [], time: [], lat: [], lon: [], alt_m: []};
+            if (row.track !== undefined && row.speed !== undefined) {
+              bins[alt].track.push(Number(row.track));
+              bins[alt].speed.push(Number(row.speed));
+              if (typeof row.temp !== "undefined") bins[alt].temp.push(Number(row.temp));
+              if (typeof row.humidity !== "undefined") bins[alt].humidity.push(Number(row.humidity));
+              if (typeof row.vario !== "undefined") bins[alt].vario.push(Number(row.vario));
+              if (row.gps_time || row.ts) bins[alt].time.push(row.gps_time || row.ts);
+              if (typeof row.lat !== "undefined" && typeof row.lon !== "undefined") {
+                bins[alt].lat.push(row.lat);
+                bins[alt].lon.push(row.lon);
+              } else {
+                bins[alt].lat.push(null);
+                bins[alt].lon.push(null);
+              }
+              if (typeof row.baro_alt !== "undefined") {
+                bins[alt].alt_m = [Math.round(row.baro_alt * 0.3048)];
+              } else {
+                bins[alt].alt_m = [Math.round(alt * 0.3048)];
+              }
+            }
+          });
+
+          const tableData = [];
+          for (const alt of Object.keys(bins)) {
+            if (bins[alt].track.length && bins[alt].speed.length) {
+              const lastTrack = Math.round(bins[alt].track[bins[alt].track.length - 1]);
+              const lastSpeed = bins[alt].speed[bins[alt].speed.length - 1].toFixed(1);
+              let lastVario = "--";
+              for (let i = bins[alt].vario.length - 1; i >= 0; i--) {
+                if (!isNaN(bins[alt].vario[i])) {
+                  lastVario = bins[alt].vario[i].toFixed(1);
+                  break;
+                }
+              }
+              let lastTemp = "--";
+              if (bins[alt].temp.length === bins[alt].time.length && bins[alt].temp.length > 0) {
+                lastTemp = bins[alt].temp[bins[alt].temp.length - 1].toFixed(1);
+              }
+              let lastHumidity = "--";
+              if (bins[alt].humidity && bins[alt].humidity.length === bins[alt].time.length && bins[alt].humidity.length > 0) {
+                lastHumidity = bins[alt].humidity[bins[alt].humidity.length - 1].toFixed(1);
+              }
+              const lastTime = bins[alt].time.length ? bins[alt].time[bins[alt].time.length - 1] : "--";
+              const arrow = `<span class="track-arrow" style="transform:rotate(${lastTrack}deg);">&#8593;</span>`;
+              const ageMin = getAgeMinutes(lastTime);
+              let ageClass = "";
+              if (ageMin !== null) {
+                if (ageMin >= 180) ageClass = "age-red";
+                else if (ageMin >= 60) ageClass = "age-orange";
+                else if (ageMin >= 30) ageClass = "age-yellow";
+              }
+              const ageStr = formatAgeHM(ageMin);
+
+              let lastLat = "--", lastLon = "--";
+              if (bins[alt].lat.length && bins[alt].lon.length) {
+                lastLat = bins[alt].lat[bins[alt].lat.length - 1];
+                lastLon = bins[alt].lon[bins[alt].lon.length - 1];
+              }
+              let gpsStr = "--";
+              if (lastLat !== null && lastLon !== null && lastLat !== "--" && lastLon !== "--") {
+                const latStr = Number(lastLat).toFixed(6);
+                const lonStr = Number(lastLon).toFixed(6);
+                gpsStr = `
+                  <a class="gps-link" href="https://maps.google.com/?q=${latStr},${lonStr}" target="_blank">${latStr}, ${lonStr}</a>
+                  <button onclick="navigator.clipboard.writeText('${latStr},${lonStr}')" title="Copy coordinates" style="margin-left:6px;cursor:pointer;font-size:1em;">📋</button>
+                  <button onclick="navigator.clipboard.writeText('${latStr}')" title="Copy latitude" style="margin-left:4px;cursor:pointer;font-size:1em;">Lat</button>
+                  <button onclick="navigator.clipboard.writeText('${lonStr}')" title="Copy longitude" style="margin-left:2px;cursor:pointer;font-size:1em;">Lon</button>
+                `;
+              }
+
+              let alt_m = bins[alt].alt_m && bins[alt].alt_m.length ? bins[alt].alt_m[0] : Math.round(Number(alt) * 0.3048);
+
+              tableData.push({
+                alt: Number(alt),
+                alt_m: alt_m,
+                track: lastTrack,
+                arrow: arrow,
+                speed: parseFloat(lastSpeed),
+                speedStr: lastSpeed,
+                vario: lastVario === "--" ? null : parseFloat(lastVario),
+                varioStr: lastVario,
+                temp: lastTemp === "--" ? null : parseFloat(lastTemp),
+                tempStr: lastTemp,
+                humidity: lastHumidity === "--" ? null : parseFloat(lastHumidity),
+                humidityStr: lastHumidity,
+                time: lastTime,
+                age: ageMin,
+                ageStr: ageStr,
+                ageClass: ageClass,
+                gps: gpsStr
+              });
+            }
+          }
+
+          tableData.sort((a, b) => {
+            let valA, valB;
+            switch (sortColumn) {
+              case 'alt':   valA = a.alt;   valB = b.alt; break;
+              case 'alt_m': valA = a.alt_m; valB = b.alt_m; break;
+              case 'track': valA = a.track; valB = b.track; break;
+              case 'speed': valA = a.speed; valB = b.speed; break;
+              case 'vario': valA = a.vario; valB = b.vario; break;
+              case 'temp':  valA = a.temp;  valB = b.temp; break;
+              case 'time':  valA = a.time;  valB = b.time; break;
+              case 'age':   valA = a.age;   valB = b.age; break;
+              default:      valA = a.alt;   valB = b.alt;
+            }
+            if (valA === null || valA === undefined) return 1;
+            if (valB === null || valB === undefined) return -1;
+            if (valA < valB) return sortAsc ? -1 : 1;
+            if (valA > valB) return sortAsc ? 1 : -1;
+            return 0;
+          });
+
+          const tbody = document.querySelector('#trackTable tbody');
+          tbody.innerHTML = '';
+          if (tableData.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="11" class="no-data">no data</td></tr>`;
+            return;
+          }
+          tableData.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${row.alt} ft</td><td>${row.alt_m} m</td><td>${row.track}°</td><td>${row.arrow}</td><td>${row.speedStr} kts</td><td>${row.varioStr} m/s</td><td>${row.tempStr}°C</td><td>${row.humidityStr}%</td><td>${row.time}</td><td class="${row.ageClass}">${row.ageStr}</td><td>${row.gps}</td>`;
+            tbody.appendChild(tr);
+          });
+        })
+        .catch(() => {
+          document.querySelector('#trackTable tbody').innerHTML =
+            `<tr><td colspan="11" class="no-data">loading error data</td></tr>`;
+        });
+    }
+
+    updateTrackTable();
+    setInterval(updateTrackTable, 30000);
+  </script>
+</body>
+</html>

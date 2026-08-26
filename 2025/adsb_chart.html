@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ADSB Flight Chart</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>
+  <style>
+    body { background: #181818; color: #fff; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+    #chart-panel { width: 100vw; height: 100vh; max-width: 100vw; max-height: 100vh; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; background: #181818; }
+    #top-nav { margin: 12px 0 0 24px; }
+    #top-nav a { margin-right: 6px; }
+    #controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 18px;
+      margin: 8px 30px 0 0;
+    }
+    .aircraft-select { display: flex; align-items: center; }
+    .aircraft-select label { color: #ffe066; font-size: 1.05em; margin-right: 8px; }
+    .aircraft-select select {
+      padding: 6px 12px;
+      background: #333;
+      color: #ffe066;
+      border: 1px solid #555;
+      border-radius: 4px;
+      font-size: 1em;
+      min-width: 150px;
+    }
+    .time-range { display: flex; align-items: center; }
+    .time-range label { color: #ffe066; font-size: 1.05em; margin-right: 8px; }
+    .time-range select {
+      padding: 6px 12px;
+      background: #333;
+      color: #ffe066;
+      border: 1px solid #555;
+      border-radius: 4px;
+      font-size: 1em;
+    }
+    .zoom-inputs { display: flex; align-items: center; }
+    .zoom-inputs label { color: #ffe066; font-size: 1.05em; margin-right: 4px; }
+    .zoom-inputs input { width: 70px; font-size: 1em; margin-left: 4px; margin-right: 10px; border-radius: 4px; border: 1px solid #444; background: #222; color: #ffe066; padding: 2px 6px; }
+    #loadBtn, #autoYBtn {
+      font-size:1em; padding:6px 16px; border-radius:6px; background:#333; color:#ffe066; border:none; cursor:pointer; margin-left: 6px;
+    }
+    #loadBtn:hover, #autoYBtn:hover { background:#555; }
+    #slider-wrap { width: 98vw; margin: 0 auto 8px auto; display: flex; align-items: center; gap: 12px; }
+    #slider-label { color: #ffe066; font-size: 1.1em; }
+    #slider-time { color: #ffe066; font-size: 1.1em; }
+    #timeSlider { flex: 1 1 0; min-width: 120px; }
+    #date-info { color:#ffe066; font-size:1.1em; text-align:right; margin:0 30px 5px 0; }
+    #adsbChart { width: 98vw !important; height: 80vh !important; max-height: 85vh; background: #181818; border-radius: 14px; margin: 0 auto; display: block; }
+    @media (max-width: 900px) { #adsbChart { height: 60vh !important; } }
+    .loading { color: #ffe066; font-style: italic; }
+    .no-data { text-align: center; color: #666; padding: 40px; }
+  </style>
+</head>
+<body>
+  <div id="top-nav">
+    <a href="live.html" target="_blank" style="color:#ffe066;font-size:1.15em;text-decoration:none;background:#333;padding:5px 14px;border-radius:8px;">Live data</a>
+    <a href="chart_1.html" target="_blank" style="color:#ffe066;font-size:1.15em;text-decoration:none;background:#333;padding:5px 14px;border-radius:8px;">Vario chart</a>
+    <a href="adsb_list.html" target="_blank" style="color:#ffe066;font-size:1.15em;text-decoration:none;background:#333;padding:5px 14px;border-radius:8px;">ADSB List</a>
+    <a href="adsb_chart.html" target="_blank" style="color:#ffe066;font-size:1.15em;text-decoration:none;background:#333;padding:5px 14px;border-radius:8px;">ADSB Chart</a>
+  </div>
+  <div id="chart-panel">
+    <div id="controls-bar">
+      <div class="aircraft-select">
+        <label for="aircraftSelect">Aircraft:</label>
+        <select id="aircraftSelect">
+          <option value="">Select aircraft...</option>
+        </select>
+      </div>
+      <div class="time-range">
+        <label for="timeRange">Time range:</label>
+        <select id="timeRange">
+          <option value="1">1 hour</option>
+          <option value="6">6 hours</option>
+          <option value="12">12 hours</option>
+          <option value="24" selected>24 hours</option>
+          <option value="48">48 hours</option>
+          <option value="72">72 hours</option>
+        </select>
+      </div>
+      <button id="loadBtn">Load Data</button>
+      <div class="zoom-inputs">
+        <label for="yMinInput">Alt min:</label>
+        <input type="number" id="yMinInput" value="" placeholder="min" step="100">
+        <label for="yMaxInput">max:</label>
+        <input type="number" id="yMaxInput" value="" placeholder="max" step="100">
+        <button id="autoYBtn">Auto Y</button>
+      </div>
+    </div>
+
+    <div id="slider-wrap">
+      <span id="slider-label">Time Window:</span>
+      <input type="range" id="timeSlider" min="0" max="100" value="100">
+      <span id="slider-time">100%</span>
+    </div>
+
+    <div id="date-info"></div>
+
+    <canvas id="adsbChart"></canvas>
+  </div>
+
+  <script>
+    let adsbChart = null;
+    let chartData = null;
+    let currentAircraft = '';
+
+    // Chart-Konfiguration
+    const chartConfig = {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Altitude (ft)',
+            data: [],
+            borderColor: '#ffd600',
+            backgroundColor: 'rgba(255,214,0,0.15)',
+            yAxisID: 'y',
+            tension: 0.1,
+            pointRadius: 0,
+            borderWidth: 3,
+            hidden: false
+          },
+          {
+            label: 'Speed (kts)',
+            data: [],
+            borderColor: '#00d8ff',
+            backgroundColor: 'rgba(0,216,255,0.15)',
+            yAxisID: 'y1',
+            tension: 0.1,
+            pointRadius: 0,
+            borderWidth: 3,
+            hidden: false
+          },
+          {
+            label: 'Track (°)',
+            data: [],
+            borderColor: '#00ff44',
+            backgroundColor: 'rgba(0,255,68,0.15)',
+            yAxisID: 'y2',
+            tension: 0.1,
+            pointRadius: 0,
+            borderWidth: 3,
+            hidden: false
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        plugins: {
+          legend: {
+            labels: {
+              color: '#ffe066',
+              font: { size: 14 }
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            titleColor: '#ffe066',
+            bodyColor: '#fff',
+            borderColor: '#ffe066',
+            borderWidth: 1
+          }
+        },
+        scales: {
+          x: {
+            type: 'time',
+            time: {
+              displayFormats: {
+                hour: 'HH:mm',
+                day: 'MMM dd HH:mm'
+              }
+            },
+            ticks: {
+              color: '#ffe066',
+              maxTicksLimit: 12
+            },
+            grid: {
+              color: 'rgba(255,255,255,0.1)'
+            }
+          },
+          y: {
+            type: 'linear',
+            display: true,
+            position: 'left',
+            title: {
+              display: true,
+              text: 'Altitude (ft)',
+              color: '#ffd600'
+            },
+            ticks: {
+              color: '#ffd600'
+            },
+            grid: {
+              color: 'rgba(255,255,255,0.1)'
+            }
+          },
+          y1: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            title: {
+              display: true,
+              text: 'Speed (kts)',
+              color: '#00d8ff'
+            },
+            ticks: {
+              color: '#00d8ff'
+            },
+            grid: {
+              drawOnChartArea: false,
+            }
+          },
+          y2: {
+            type: 'linear',
+            display: true,
+            position: 'right',
+            title: {
+              display: true,
+              text: 'Track (°)',
+              color: '#00ff44'
+            },
+            ticks: {
+              color: '#00ff44',
+              min: 0,
+              max: 360
+            },
+            grid: {
+              drawOnChartArea: false,
+            }
+          }
+        }
+      }
+    };
+
+    // Flugzeuge laden
+    function loadAircraft() {
+      console.log('Loading aircraft...');
+
+      // Fallback-Daten für lokale Entwicklung
+      const fallbackData = {
+        "aircraft": [
+          {"callsign": "DORZL", "registration": "", "country_code": "AUT 1"},
+          {"callsign": "FPPSE", "registration": "", "country_code": "FRA 2"},
+          {"callsign": "FPPGB", "registration": "", "country_code": "FRA 1"},
+          {"callsign": "4082BE", "registration": "", "country_code": "GBR 3"},
+          {"callsign": "DOSTL", "registration": "D-OSTL", "country_code": "GER 3"},
+          {"callsign": "HBBLA", "registration": "", "country_code": "SUI 1"},
+          {"callsign": "N9YN", "registration": "N9YN", "country_code": "USA 3"},
+          {"callsign": "DOWBA", "registration": "", "country_code": "POL 2"},
+          {"callsign": "DOMFE", "registration": "D-OMFE", "country_code": "GER 1"},
+          {"callsign": "N396WB", "registration": "N396WB", "country_code": "USA 2"},
+          {"callsign": "DOOGB", "registration": "", "country_code": "GER 2"},
+          {"callsign": "GGASI", "registration": "G-GASI", "country_code": "GBR 2"},
+          {"callsign": "DOWBI", "registration": "D-OCFT", "country_code": "GBR 1"},
+          {"callsign": "DORON", "registration": "D-ORON", "country_code": "BEL 1"},
+          {"callsign": "FHMDF", "registration": "", "country_code": "FRA 3"},
+          {"callsign": "N526UP", "registration": "N526UP", "country_code": "USA 1"},
+          {"callsign": "DOTLI", "registration": "D-OTLI", "country_code": "ITA 1"},
+          {"callsign": "ECMAK", "registration": "EC-MAK", "country_code": "ESP 1"},
+          {"callsign": "DOOWE", "registration": "D-OLVE", "country_code": "BEL 3"},
+          {"callsign": "HBQWV", "registration": "HB-QWV", "country_code": "SUI 2"}
+        ]
+      };
+
+      // Versuche zuerst die API zu laden
+      fetch('adsb_chart.php')
+        .then(response => {
+          console.log('Response status:', response.status);
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log('Received data from API:', data);
+          populateAircraftSelect(data);
+        })
+        .catch(error => {
+          console.log('API failed, using fallback data:', error);
+          populateAircraftSelect(fallbackData);
+        });
+    }
+
+    function populateAircraftSelect(data) {
+      const select = document.getElementById('aircraftSelect');
+      select.innerHTML = '<option value="">Select aircraft...</option>';
+
+      if (data.aircraft && data.aircraft.length > 0) {
+        console.log('Found', data.aircraft.length, 'aircraft');
+        data.aircraft.forEach(aircraft => {
+          const option = document.createElement('option');
+          // Leerzeichen von callsign entfernen
+          const cleanCallsign = aircraft.callsign.trim();
+          option.value = cleanCallsign;
+          option.textContent = `${cleanCallsign} (${aircraft.registration || 'N/A'}) - ${aircraft.country_code || ''}`;
+          select.appendChild(option);
+        });
+      } else {
+        console.log('No aircraft found in data');
+        select.innerHTML = '<option value="">No aircraft available</option>';
+      }
+    }
+
+    // Chart-Daten laden
+    function loadChartData() {
+      const callsign = document.getElementById('aircraftSelect').value;
+      const hours = document.getElementById('timeRange').value;
+
+      if (!callsign) {
+        alert('Please select an aircraft first');
+        return;
+      }
+
+      document.getElementById('loadBtn').textContent = 'Loading...';
+      document.getElementById('loadBtn').disabled = true;
+
+      fetch(`adsb_chart.php?callsign=${encodeURIComponent(callsign)}&hours=${hours}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            alert('Error: ' + data.error);
+            return;
+          }
+
+          chartData = data;
+          currentAircraft = callsign;
+          updateChart();
+          updateDateInfo(data.timestamps);
+          autoScaleY(); // Automatisch Y-Achse skalieren
+        })
+        .catch(error => {
+          console.error('Error loading chart data:', error);
+          alert('Error loading data: ' + error.message);
+        })
+        .finally(() => {
+          document.getElementById('loadBtn').textContent = 'Load Data';
+          document.getElementById('loadBtn').disabled = false;
+        });
+    }
+
+    // Chart aktualisieren
+    function updateChart() {
+      if (!chartData || !adsbChart) return;
+
+      // Zeitstempel für Chart.js formatieren
+      const labels = chartData.timestamps.map(ts => new Date(ts));
+
+      adsbChart.data.labels = labels;
+      adsbChart.data.datasets[0].data = chartData.altitude; // Altitude
+      adsbChart.data.datasets[1].data = chartData.speed;    // Speed
+      adsbChart.data.datasets[2].data = chartData.track;    // Track
+
+      adsbChart.update();
+    }
+
+    // Datum-Info aktualisieren
+    function updateDateInfo(timestamps) {
+      const infoDiv = document.getElementById('date-info');
+      if (!timestamps || timestamps.length === 0) {
+        infoDiv.textContent = 'No data available';
+        return;
+      }
+
+      const start = new Date(timestamps[0]);
+      const end = new Date(timestamps[timestamps.length - 1]);
+
+      infoDiv.textContent = `Data from ${start.toLocaleString()} to ${end.toLocaleString()}`;
+    }
+
+    // Y-Achse automatisch skalieren
+    function autoScaleY() {
+      if (!adsbChart || !chartData) return;
+
+      const altData = chartData.altitude.filter(v => v !== null && !isNaN(v));
+      if (altData.length > 0) {
+        const minAlt = Math.floor(Math.min(...altData) / 100) * 100;
+        const maxAlt = Math.ceil(Math.max(...altData) / 100) * 100;
+
+        document.getElementById('yMinInput').value = minAlt;
+        document.getElementById('yMaxInput').value = maxAlt;
+
+        adsbChart.options.scales.y.min = minAlt;
+        adsbChart.options.scales.y.max = maxAlt;
+        adsbChart.update();
+      }
+    }
+
+    // Y-Achse manuell setzen
+    function applyYZoom() {
+      if (!adsbChart) return;
+
+      const minVal = parseFloat(document.getElementById('yMinInput').value);
+      const maxVal = parseFloat(document.getElementById('yMaxInput').value);
+
+      if (!isNaN(minVal) && !isNaN(maxVal)) {
+        adsbChart.options.scales.y.min = minVal;
+        adsbChart.options.scales.y.max = maxVal;
+        adsbChart.update();
+      }
+    }
+
+    // Event-Listener
+    document.getElementById('loadBtn').addEventListener('click', loadChartData);
+    document.getElementById('autoYBtn').addEventListener('click', autoScaleY);
+    document.getElementById('yMinInput').addEventListener('change', applyYZoom);
+    document.getElementById('yMaxInput').addEventListener('change', applyYZoom);
+
+    // Chart initialisieren
+    document.addEventListener('DOMContentLoaded', function() {
+      const ctx = document.getElementById('adsbChart').getContext('2d');
+      adsbChart = new Chart(ctx, chartConfig);
+
+      // Flugzeuge laden
+      loadAircraft();
+    });
+  </script>
+</body>
+</html>

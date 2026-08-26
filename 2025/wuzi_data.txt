@@ -1,0 +1,19 @@
+Wuzi Vario
+qnh=1013
+alt_ft=852
+alt_m=260
+gps_alt= 0
+gps_lat=0.000000
+gps_lng=0.000000
+gps_alt= 0
+gps_course= 0
+gps_speed=0.0
+gps_sats=0
+peak=899
+valley=869
+vario=-1.2
+temp=29.2
+humidity=40.0
+ballast_drop=
+ballast_drop_count=173
+gps_time=00:00:00

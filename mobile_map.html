@@ -1676,13 +1676,75 @@
       opacity: 1
     });
 
+    const EPR131_LAYER_VISIBILITY_KEY = 'epr131LayerVisible';
+    const epr131Airspace = L.layerGroup();
+
+    function readEpr131VisibilityPreference() {
+      const stored = localStorage.getItem(EPR131_LAYER_VISIBILITY_KEY);
+      if (stored === null) return false;
+      return stored === '1';
+    }
+
+    function saveEpr131VisibilityPreference(isVisible) {
+      localStorage.setItem(EPR131_LAYER_VISIBILITY_KEY, isVisible ? '1' : '0');
+    }
+
+    function loadEpr131KmlOverlay() {
+      fetch('epr131_airspace.kml', { cache: 'no-cache' })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`Failed to load KML (${response.status})`);
+          }
+          return response.text();
+        })
+        .then(kmlText => {
+          if (typeof toGeoJSON === 'undefined') {
+            throw new Error('toGeoJSON library is not available.');
+          }
+
+          const xml = new DOMParser().parseFromString(kmlText, 'application/xml');
+          const geojson = toGeoJSON.kml(xml);
+
+          const kmlLayer = L.geoJSON(geojson, {
+            style: {
+              color: '#ff2a2a',
+              weight: 3,
+              opacity: 0.95,
+              fill: false,
+              fillOpacity: 0
+            },
+            onEachFeature: function(feature, layer) {
+              const name = feature?.properties?.name || 'EPR131';
+              const description = feature?.properties?.description || 'Restricted area EPR131 (SFC-FL095)';
+              layer.bindPopup(`<b>${name}</b><br>${description}`);
+            }
+          });
+
+          epr131Airspace.clearLayers();
+          epr131Airspace.addLayer(kmlLayer);
+
+          // Sichtbarkeit erst nach erfolgreichem Laden der Datei anwenden.
+          if (readEpr131VisibilityPreference()) {
+            if (!map.hasLayer(epr131Airspace)) {
+              epr131Airspace.addTo(map);
+            }
+          } else if (map.hasLayer(epr131Airspace)) {
+            map.removeLayer(epr131Airspace);
+          }
+        })
+        .catch(err => {
+          console.error('EPR131 KML could not be loaded:', err);
+        });
+    }
+
     const baseLayers = {
       "OSM": osm,
       "Satellite": esriSat,
       "Topographic": topo
     };
     const overlays = {
-      "OpenAIP Airspace": openAIP
+      "OpenAIP Airspace": openAIP,
+      "EPR131 Airspace (KML)": epr131Airspace
     };
 
     map = L.map('map', {
@@ -1691,6 +1753,7 @@
       layers: [osm]
     });
     L.control.layers(baseLayers, overlays).addTo(map);
+    loadEpr131KmlOverlay();
     const savedMobileBaseLayer = localStorage.getItem('mobileMapBaseLayer');
     if (savedMobileBaseLayer && baseLayers[savedMobileBaseLayer] && savedMobileBaseLayer !== 'OSM') {
       map.removeLayer(osm);
@@ -1757,6 +1820,20 @@
     map.on('layeradd', function(e) {
       if (e.layer === openAIP) {
         openAIP.bringToFront();
+      }
+      if (e.layer === epr131Airspace) {
+        saveEpr131VisibilityPreference(true);
+        epr131Airspace.eachLayer(layer => {
+          if (layer && typeof layer.bringToFront === 'function') {
+            layer.bringToFront();
+          }
+        });
+      }
+    });
+
+    map.on('layerremove', function(e) {
+      if (e.layer === epr131Airspace) {
+        saveEpr131VisibilityPreference(false);
       }
     });
 

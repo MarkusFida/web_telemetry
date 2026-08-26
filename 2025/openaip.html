@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>OpenAIP Tile Test</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <style>
+    html, body { height: 100%; margin: 0; padding: 0; }
+    #map { width: 100vw; height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    // OpenAIP als dynamischer TileLayer
+    const openAIP = L.tileLayer('https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=f2e63a4dcf8df59d40b499866ae6bdda', {
+      maxZoom: 17,
+      attribution: 'Map data © OpenAIP',
+      tileSize: 256,
+      tms: false
+    });
+
+    const map = L.map('map', {
+      center: [48.79138, 14.974624],
+      zoom: 8,
+      layers: [openAIP]
+    });
+  </script>
+</body>
+</html>

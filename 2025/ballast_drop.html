@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ballast Drop Times (last 24h)</title>
+  <style>
+    body { background: #181818; color: #ffe066; font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    h1 { color: #ffe066; text-align: center; margin-top: 30px; }
+    table { margin: 30px auto; border-collapse: collapse; background: #222; }
+    th, td { padding: 10px 24px; border: 1px solid #444; font-size: 1.2em; }
+    th { background: #333; color: #ffe066; }
+    td { color: #fff; text-align: center; }
+    tr:nth-child(even) { background: #292929; }
+    .no-data { text-align: center; color: #888; margin-top: 40px; }
+  </style>
+</head>
+<body>
+  <div style="margin:18px 0 0 30px;">
+    <a href="live.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">Live data</a>
+    <a href="chart_1.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">chart</a>
+    <a href="alt_wind_chart.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">Alt/Wind data</a>
+    <a href="ballast_drop.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">Ballast Drop Times</a>
+    <a href="map.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">map</a>
+    <a href="csv.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">csv chart</a>
+  </div>
+  <h1>Ballast Drop Times (last 24h)</h1>
+  <table id="dropTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Date</th>
+        <th>Time (UTC)</th>
+        <th>Altitude (ft)</th>
+        <th>Total Count</th>  <!-- Neu hinzugefügt -->
+      </tr>
+    </thead>
+    <tbody id="dropBody">
+      <tr><td colspan="5" class="no-data">Loading data...</td></tr>  <!-- colspan von 4 auf 5 geändert -->
+    </tbody>
+  </table>
+  <script>
+    function loadBallastDrop() {
+      fetch('ballast_drop.php')
+        .then(r => r.json())
+        .then(data => {
+          const body = document.getElementById('dropBody');
+          body.innerHTML = '';
+          if (!data.length) {
+            body.innerHTML = '<tr><td colspan="5" class="no-data">No ballast drop events in the last 24h.</td></tr>';  <!-- colspan von 4 auf 5 geändert -->
+            return;
+          }
+          let lastTime = null;
+          let count = 0;
+          data.forEach((row) => {
+            if (row.ballast_drop !== lastTime) {
+              count++;
+              let date = '', time = '';
+              // Versuche zuerst aus ballast_drop zu extrahieren
+              if (row.ballast_drop) {
+                const match = row.ballast_drop.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})/);
+                if (match) {
+                  date = match[1];
+                  time = match[2];
+                } else if (row.ballast_drop.match(/^\d{2}:\d{2}:\d{2}$/)) {
+                  time = row.ballast_drop;
+                }
+              }
+              // Falls kein Datum gefunden, nimm created_at
+              if (!date && row.created_at) {
+                const dt = row.created_at.split(/[ T]/);
+                if (dt.length >= 2) {
+                  date = dt[0];
+                  if (!time) time = dt[1].substring(0,8);
+                }
+              }
+              const tr = document.createElement('tr');
+              tr.innerHTML = `<td>${count}</td><td>${date}</td><td>${time}</td><td>${row.alt_ft ?? ''}</td><td>${row.ballast_drop_count ?? ''}</td>`;  <!-- Neu hinzugefügt -->
+              body.appendChild(tr);
+              lastTime = row.ballast_drop;
+            }
+          });
+          if (count === 0) {
+            body.innerHTML = '<tr><td colspan="5" class="no-data">No ballast drop events in the last 24h.</td></tr>';  <!-- colspan von 4 auf 5 geändert -->
+          }
+        })
+        .catch((err) => {
+          document.getElementById('dropBody').innerHTML = '<tr><td colspan="5" class="no-data">Error loading data.</td></tr>';  <!-- colspan von 4 auf 5 geändert -->
+          console.error(err);
+      });
+    }
+    loadBallastDrop();
+    setInterval(loadBallastDrop, 60000); // update every minute
+  </script>
+</body>
+</html>

@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wuzi Vario Live & Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <style>
+    body {
+      background: #111;
+      color: #fff;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .main-flex {
+      display: flex;
+      flex-direction: row;
+      gap: 40px;
+      align-items: flex-start;
+      width: 100vw;
+      max-width: 1800px;
+      margin: 30px auto;
+      justify-content: center;
+    }
+    .live-panel, #map-panel {
+      background: #222;
+      border-radius: 18px;
+      box-shadow: 0 0 16px #000a;
+      padding: 24px 24px 12px 24px;
+      min-width: 420px;
+      max-width: 700px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+    #map-panel {
+        flex: 1 1 0;
+        max-width: 1000px;
+        min-width: 500px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+    }
+    #map {
+        width: 100%;
+        height: 900px;
+        max-width: 100%;
+        max-height: 1000px;
+        border-radius: 10px;
+        border: 2px solid #333;
+        margin-top: 10px;
+        background: #181818;
+    }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      width: 100%;
+      margin-bottom: 0;
+      height: 48px;
+    }
+    .zeit {
+      font-size: 2.8em;
+      color: #fff;
+      min-width: 120px;
+      text-align: left;
+      font-family: monospace;
+      letter-spacing: 2px;
+    }
+    .qnh {
+      font-size: 2.2em;
+      color: #fff;
+      text-align: center;
+      flex: 1;
+      font-weight: normal;
+      letter-spacing: 1px;
+    }
+    .spacer {
+      width: 120px;
+    }
+    .main-row {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 24px;
+      width: 100%;
+      flex-wrap: wrap;
+    }
+    .data-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 220px;
+      max-width: 340px;
+      flex: 2 1 220px;
+    }
+    .big {
+      font-size: 6em;
+      font-weight: bold;
+      color: #ffe066;
+      text-align: center;
+      margin: 0.1em 0 0.2em 0;
+      letter-spacing: 2px;
+      line-height: 1.1em;
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 0.2em;
+    }
+    .unit {
+      font-size: 0.4em;
+      color: #ffe066;
+      margin-left: 0.2em;
+      font-weight: normal;
+    }
+    .unit-big {
+      font-size: 1.4em;
+      color: #ffe066;
+      margin-left: 0.2em;
+      font-weight: normal;
+      vertical-align: middle;
+    }
+    .med {
+      font-size: 2.6em;
+      color: #fff;
+      margin-bottom: 0.2em;
+      margin-top: -0.2em;
+      text-align: center;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      width: 100%;
+      max-width: 340px;
+      font-size: 1.7em;
+    }
+    .label {
+      color: #aaa;
+      font-size: 1.1em;
+      width: 110px;
+    }
+    .value {
+      font-size: 1.2em;
+      color: #fff;
+      min-width: 80px;
+      text-align: right;
+    }
+    .cyan { color: #00eaff; }
+    .yellow { color: #ffe066; }
+    .row.buttons {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 28px;
+        margin-bottom: 0;
+        gap: 30px;
+        width: 100%;
+        flex-wrap: wrap;
+    }
+    button {
+      font-size:1.1em;
+      padding:10px 28px;
+      border-radius:10px;
+      border:none;
+      background:#333;
+      color:#ffe066;
+      cursor:pointer;
+      margin-left:0;
+      min-width: 180px;
+      margin-right: 0;
+      margin-bottom: 0;
+      margin-top: 0;
+      box-shadow: 0 0 8px #0006;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #444;
+    }
+    .vario-block {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      min-width: 110px;
+      margin-top: 10px;
+      margin-bottom: 20px;
+    }
+    .vario-value {
+      font-size: 3.5em;
+      font-weight: bold;
+      width: 170px;
+      text-align: right;
+      margin-right: 24px;
+      color: #ffe066;
+      transition: color 0.2s;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
+      display: block;
+    }
+    .vario-bar-container {
+      position: relative;
+      height: 300px;
+      width: 60px;
+      margin-bottom: 10px;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .vario-bar-bg {
+      width: 30px;
+      height: 280px;
+      background: #222;
+      border-radius: 10px;
+      border: 2px solid #fff;
+      position: absolute;
+      left: 15px;
+      top: 10px;
+      z-index: 1;
+      box-shadow: 0 0 8px #000a;
+    }
+    .vario-fill {
+      position: absolute;
+      left: 19px;
+      width: 22px;
+      border-radius: 6px;
+      z-index: 2;
+      background: linear-gradient(to top, #ffe066 0%, #ffe066 100%);
+      transition: height 0.3s, background 0.3s, top 0.3s;
+    }
+    .vario-scale {
+      position: absolute;
+      left: 0;
+      width: 60px;
+      top: 0;
+      height: 300px;
+      pointer-events: none;
+      font-size: 1em;
+      color: #aaa;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: flex-end;
+      z-index: 3;
+    }
+    .vario-scale span {
+      width: 54px;
+      text-align: right;
+      font-size: 1em;
+      color: #aaa;
+      user-select: none;
+      font-family: monospace;
+    }
+    .vario-zero-line {
+      position: absolute;
+      left: 15px;
+      width: 30px;
+      height: 2px;
+      background: #ffe066;
+      top: 150px;
+      z-index: 4;
+      opacity: 0.7;
+    }
+    @media (max-width: 1100px) {
+      .main-flex { flex-direction: column; }
+      .live-panel, #map-panel { max-width: 100%; min-width: 0; }
+      #map-panel { width: 100%; min-width: 0; max-width: 100%; }
+      #map { height: 350px; }
+    }
+  </style>
+</head>
+<body>
+  <div style="margin:18px 0 0 30px;">
+    <a href="live.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">Live data</a>
+    <a href="chart_1.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">chart</a>
+    <a href="alt_wind_chart.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">Alt/Wind data</a>
+    <a href="ballast_drop.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">Ballast Drop Times</a>
+    <a href="map.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">map</a>
+    <a href="csv.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">csv chart</a>
+    <a href="chasing_car.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">chasing map</a>
+  </div>
+  <div class="main-flex">
+    <div class="live-panel">
+      <div class="top-bar">
+        <span class="zeit" id="zeit">--:--:--</span>
+        <span class="qnh" id="qnh">QNH ----</span>
+        <span class="spacer"></span>
+      </div>
+      <div class="main-row">
+        <div class="data-block">
+          <div class="big" id="hoehe_ft_wrap">
+            <span id="hoehe_ft">----</span>
+            <span class="unit">ft</span>
+          </div>
+          <div class="med"><span id="hoehe_m">----</span> m</div>
+          <div class="row">
+            <span class="label">GPS Alt</span>
+            <span class="value" id="gps_alt">----</span> <span class="unit-big">m</span>
+          </div>
+          <div class="row">
+            <span class="label">Track</span>
+            <span class="value" id="gps_course">----</span> <span class="unit-big">°</span>
+          </div>
+          <div class="row">
+            <span class="label">Speed</span>
+            <span class="value" id="gps_speed">----</span> <span class="unit-big">kts</span>
+          </div>
+          <div class="row">
+            <span class="label cyan">Peak</span>
+            <span class="value cyan" id="peak">----</span> <span class="unit-big">ft</span>
+          </div>
+          <div class="row">
+            <span class="label cyan">Valley</span>
+            <span class="value cyan" id="valley">----</span> <span class="unit-big">ft</span>
+          </div>
+          <div class="row">
+            <span class="label">Temp</span>
+            <span class="value" id="temp">--</span> <span class="unit-big">°C</span>
+          </div>
+          <div class="row">
+            <span class="label">Humidity</span>
+            <span class="value" id="humidity">--</span> <span class="unit-big">%</span>
+          </div>
+          <div class="row">
+            <span class="label">Lat</span>
+            <span class="value" id="gps_lat">0.000000</span>
+          </div>
+          <div class="row">
+            <span class="label">Long</span>
+            <span class="value" id="gps_lng">0.000000</span>
+          </div>
+          <div class="row">
+            <span class="label yellow">Ballast drop</span>
+            <span class="value yellow" id="ballast_drop">--</span>
+          </div>
+          <div class="row">
+            <span class="label yellow">ballast drop count</span>
+            <span class="value yellow" id="ballast_drop_count">--</span>
+          </div>
+        </div>
+        <div class="vario-block">
+          <span class="vario-value" id="vario">+1.2</span>
+          <div class="vario-bar-container">
+            <div class="vario-bar-bg"></div>
+            <div class="vario-fill" id="vario_fill"></div>
+            <div class="vario-zero-line"></div>
+            <div class="vario-scale">
+              <span>+2.0 m/s</span>
+              <span>+1.0</span>
+              <span> 0.0</span>
+              <span>-1.0</span>
+              <span>-2.0 m/s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row buttons">
+        <button id="copyLatLngBtn">act. Lat/Long copy</button>
+        <button id="copyLatBtn">Lat copy</button>
+        <button id="copyLngBtn">Long copy</button>
+        <button id="downloadKmlBtn">24h KML file</button>
+        <button id="downloadCsvBtn">CSV data</button>
+      </div>
+    </div>
+    <div id="map-panel">
+      <div id="map"></div>
+    </div>
+  </div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    // Hilfsfunktion: Gelände-Höhe abfragen
+    function getGroundElevation(lat, lng, callback) {
+      fetch(`https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lng}`)
+        .then(r => r.json())
+        .then(json => {
+          if (json.results && json.results.length) {
+            callback(json.results[0].elevation);
+          } else {
+            callback(null);
+          }
+        })
+        .catch(() => callback(null));
+    }
+
+    function gpsColor(sats) {
+      if (sats >= 7) return "#baff00";
+      else if (sats >= 4) return "#ffb300";
+      else return "#ff4444";
+    }
+
+    function updateDisplay(data) {
+      document.getElementById('zeit').textContent = data.zeit;
+      document.getElementById('qnh').textContent = "QNH " + data.qnh;
+      document.getElementById('hoehe_ft').textContent = data.hoehe_ft;
+      document.getElementById('hoehe_m').textContent = data.hoehe_m;
+      document.getElementById('gps_alt').textContent = data.gps_alt;
+      document.getElementById('gps_course').textContent = data.gps_course;
+      document.getElementById('gps_speed').textContent = data.gps_speed;
+      document.getElementById('peak').textContent = data.peak;
+      document.getElementById('valley').textContent = data.valley;
+      document.getElementById('temp').textContent = data.temp !== undefined ? data.temp : '--';
+      document.getElementById('humidity').textContent = (data.humidity !== undefined && !isNaN(data.humidity))? Number(data.humidity).toFixed(1): '--';
+      document.getElementById('gps_lat').textContent = (data.gps_lat || 0).toFixed(6);
+      document.getElementById('gps_lng').textContent = (data.gps_lng || 0).toFixed(6);
+      document.getElementById('vario').textContent = (typeof data.vario === "number" && !isNaN(data.vario)) ? data.vario.toFixed(1) : "--";
+      document.getElementById('ballast_drop').textContent = data.ballast_drop || "--";
+      document.getElementById('ballast_drop_count').textContent = (typeof data.ballast_drop_count !== "undefined") ? data.ballast_drop_count : "--";
+
+      // Balkenanzeige für Vario
+      const varioFill = document.getElementById('vario_fill');
+      let v = (typeof data.vario === "number" && !isNaN(data.vario)) ? data.vario : 0;
+      const maxVario = 2.0; // Scale: -2.0 to +2.0 m/s
+      const barHeight = 280;
+      const barTop = 10; // .vario-bar-bg top offset in px
+      const barZero = barTop + barHeight / 2; // zero line in px
+      let h = Math.max(-maxVario, Math.min(maxVario, v)); // Clamp
+      let fillHeight = Math.abs(h) * (barHeight / 2) / maxVario;
+      let px;
+      if (h > 0.05) {
+        // Climb: green gradient
+        px = barZero - fillHeight;
+        varioFill.style.background = "linear-gradient(to top, #3fcf3f 0%, #baff00 100%)";
+        varioFill.style.opacity = "1";
+      } else if (h < -0.05) {
+        // Sink: red gradient
+        px = barZero;
+        varioFill.style.background = "linear-gradient(to bottom, #ff4444 0%, #b30000 100%)";
+        varioFill.style.opacity = "1";
+      } else {
+        // Near zero: gray, minimal bar
+        px = barZero - 2;
+        fillHeight = 4;
+        varioFill.style.background = "linear-gradient(to top, #888 0%, #aaa 100%)";
+        varioFill.style.opacity = "0.4";
+      }
+      varioFill.style.height = fillHeight + "px";
+      varioFill.style.top = px + "px";
+
+      document.getElementById('copyLatLngBtn').onclick = function() {
+        const lat = document.getElementById('gps_lat').textContent;
+        const lng = document.getElementById('gps_lng').textContent;
+        const text = lat + ", " + lng;
+        navigator.clipboard.writeText(text).then(() => {
+          this.textContent = "copy done!";
+          setTimeout(() => { this.textContent = "act. Lat/Long"; }, 1200);
+        });
+      };
+
+      document.getElementById('copyLatBtn').onclick = function() {
+        const lat = document.getElementById('gps_lat').textContent;
+        navigator.clipboard.writeText(lat).then(() => {
+          this.textContent = "Lat kopiert!";
+          setTimeout(() => { this.textContent = "Lat kopieren"; }, 1200);
+        });
+      };
+
+      document.getElementById('copyLngBtn').onclick = function() {
+        const lng = document.getElementById('gps_lng').textContent;
+        navigator.clipboard.writeText(lng).then(() => {
+          this.textContent = "Long kopiert!";
+          setTimeout(() => { this.textContent = "Long kopieren"; }, 1200);
+        });
+      };
+
+      document.getElementById('downloadKmlBtn').onclick = function() {
+        fetch('vario_chart.php?hours=24')
+          .then(r => r.json())
+          .then(rows => {
+            let kml =
+              `<?xml version="1.0" encoding="UTF-8"?>\n` +
+              `<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n<name>Wuzi Vario Track</name>\n`;
+
+            kml += `<Placemark>\n<name>Track</name>\n<LineString>\n<coordinates>\n`;
+            rows.forEach(row => {
+              if (row.gps_lng && row.gps_lat) {
+                kml += `${row.gps_lng},${row.gps_lat},${row.gps_alt || 0}\n`;
+              }
+            });
+            kml += `</coordinates>\n</LineString>\n</Placemark>\n`;
+
+            rows.forEach(row => {
+              if (row.gps_lng && row.gps_lat) {
+                kml += `<Placemark>\n`;
+                kml += `<name>${row.ts || row.gps_time || ''}</name>\n`;
+                kml += `<description><![CDATA[`;
+                kml += `QNH: ${row.qnh || ''}<br>`;
+                kml += `Baro Alt: ${row.alt_ft || ''} ft (${row.alt_m || ''} m)<br>`;
+                kml += `GPS Alt: ${row.gps_alt || ''} m<br>`;
+                kml += `Lat: ${row.gps_lat || ''}<br>`;
+                kml += `Lng: ${row.gps_lng || ''}<br>`;
+                kml += `Track: ${row.gps_course || ''}°<br>`;
+                kml += `Speed: ${row.gps_speed || ''} kts<br>`;
+                kml += `Sats: ${row.gps_sats || ''}<br>`;
+                kml += `Peak: ${row.peak || ''} ft<br>`;
+                kml += `Valley: ${row.valley || ''} ft<br>`;
+                kml += `Vario: ${typeof row.vario !== 'undefined' ? Number(row.vario).toFixed(1) : ''} m/s<br>`;
+                kml += `]]></description>\n`;
+                kml += `<Point><coordinates>${row.gps_lng},${row.gps_lat},${row.gps_alt || 0}</coordinates></Point>\n`;
+                kml += `</Placemark>\n`;
+              }
+            });
+
+            kml += `</Document>\n</kml>`;
+
+            const now = new Date();
+            const pad = n => n.toString().padStart(2, '0');
+            const fname = `wuzi_vario_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}.kml`;
+
+            const blob = new Blob([kml], {type: "application/vnd.google-earth.kml+xml"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fname;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }, 100);
+          });
+      };
+
+      document.getElementById('downloadCsvBtn').onclick = function() {
+        fetch('vario_db_all.php')
+          .then(r => r.json())
+          .then(rows => {
+            if (!rows.length) return;
+            const header = Object.keys(rows[0]).join(';');
+            const csv = [header].concat(
+              rows.map(row => Object.values(row).map(v => (v !== null ? String(v).replace(/[\r\n;]/g, ' ') : '')).join(';'))
+            ).join('\r\n');
+            const now = new Date();
+            const pad = n => n.toString().padStart(2, '0');
+            const fname = `wuzi_vario_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}.csv`;
+            const blob = new Blob([csv], {type: "text/csv"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fname;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }, 100);
+          });
+      };
+    }
+
+    // Leaflet Map mit OSM und Satellit, Track und sehr großem magenta Track-Pfeil (weiter weg vom Zentrum)
+    let map, marker, baseLayers, trackLine, trackArrow;
+    let trackCoords = [];
+    function updateMap(data) {
+      if (!data.gps_lat || !data.gps_lng || isNaN(data.gps_lat) || isNaN(data.gps_lng)) return;
+
+      // Track-Koordinaten speichern (max 500 Punkte)
+      trackCoords.push([data.gps_lat, data.gps_lng]);
+      if (trackCoords.length > 500) trackCoords.shift();
+
+      // --- GEO-HÖHE (über Meer) dynamisch berechnen und anzeigen ---
+      getGroundElevation(data.gps_lat, data.gps_lng, function(groundElevation) {
+        let geoHeight = "--";
+        if (groundElevation !== null) {
+          geoHeight = groundElevation.toFixed(1) + " m";
+        }
+
+        const popupText = `
+          <div style="min-width:260px;font-size:1.25em;">
+            <b>Time:</b> ${data.zeit}<br>
+            <b>GPS Alt:</b> ${data.gps_alt} m<br>
+            <b>Baro Alt:</b> ${data.hoehe_ft} ft<br>
+            <b>GND elev.:</b> ${geoHeight}<br>
+            <b>Speed:</b> ${data.gps_speed} kts<br>
+            <b>Vario:</b> ${typeof data.vario !== "undefined" ? data.vario + " m/s" : "--"}<br>
+            <b>Track:</b> ${data.gps_course}°
+          </div>
+        `;
+
+        // Pfeil kräftiger, sehr groß und jetzt magenta
+        const arrowLength = 0.0015; // ca. 150m, anpassbar
+        const courseRad = ((parseFloat(data.gps_course) || 0) - 90) * Math.PI / 180;
+        const arrowLat = data.gps_lat + Math.cos(courseRad) * arrowLength;
+        const arrowLng = data.gps_lng + Math.sin(courseRad) * arrowLength;
+
+        const arrowHtml = `<div style="transform: rotate(${data.gps_course || 0}deg); font-size:5em; color:#ff00cc; font-weight:bold; text-shadow: 0 0 12px #222, 0 0 4px #ff00cc; line-height:1;">
+          &#8593;
+        </div>`;
+
+        if (!map) {
+          // --- Basemaps ---
+          const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+          });
+          const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Tiles © Esri'
+          });
+          baseLayers = {
+            "OSM": osm,
+            "Satellit": esriSat
+          };
+          map = L.map('map', {
+            center: [data.gps_lat, data.gps_lng],
+            zoom: 15,
+            layers: [osm]
+          });
+          L.control.layers(baseLayers).addTo(map);
+
+          // Track-Linie
+          trackLine = L.polyline(trackCoords, { color: '#00eaff', weight: 4, opacity: 0.7 }).addTo(map);
+
+          // Marker mit Popup
+          marker = L.marker([data.gps_lat, data.gps_lng]).addTo(map)
+            .bindPopup(popupText, { maxWidth: 400, minWidth: 260, autoPan: true })
+            .openPopup();
+
+          // Sehr großer magenta Track-Pfeil (SVG mit fettem Pfeil, weiter weg vom Zentrum)
+          trackArrow = L.marker([arrowLat, arrowLng], {
+            icon: L.divIcon({
+              className: '',
+              html: arrowHtml,
+              iconSize: [80, 80],
+              iconAnchor: [40, 40]
+            }),
+            interactive: false
+          }).addTo(map);
+
+        } else {
+          // Track-Linie aktualisieren
+          trackLine.setLatLngs(trackCoords);
+
+          // Marker aktualisieren
+          marker.setLatLng([data.gps_lat, data.gps_lng])
+            .setPopupContent(popupText);
+          map.setView([data.gps_lat, data.gps_lng]);
+
+          // Track-Pfeil aktualisieren (kräftiger, noch größer, weiter weg, magenta)
+          trackArrow.setLatLng([arrowLat, arrowLng]);
+          trackArrow.setIcon(L.divIcon({
+            className: '',
+            html: arrowHtml,
+            iconSize: [80, 80],
+            iconAnchor: [40, 40]
+          }));
+        }
+      });
+    }
+
+    function parseTextData(text) {
+      const lines = text.split('\n');
+      const data = {};
+      lines.forEach(line => {
+        let [key, value] = line.split('=');
+        if (key && value !== undefined) {
+          data[key.trim()] = value.trim();
+        }
+      });
+      data.gps_lat = parseFloat(data.gps_lat || "0");
+      data.gps_lng = parseFloat(data.gps_lng || "0");
+      data.vario = parseFloat(data.vario || "0");
+      // humidity aus humidity oder rh lesen:
+      data.humidity = data.humidity !== undefined ? parseFloat(data.humidity) :
+                      (data.rh !== undefined ? parseFloat(data.rh) : undefined);
+      return {
+        zeit: data.gps_time || "--:--:--",
+        qnh: data.qnh || "----",
+        hoehe_ft: data.alt_ft || "",
+        hoehe_m: data.alt_m || "",
+        gps_alt: data.gps_alt || "",
+        gps_course: data.gps_course || "",
+        gps_speed: data.gps_speed || "",
+        gps_sats: parseInt(data.gps_sats || "0"),
+        peak: data.peak || "",
+        valley: data.valley || "",
+        temp: data.temp || "--",
+        humidity: data.humidity,
+        vario: data.vario,
+        gps_lat: data.gps_lat,
+        gps_lng: data.gps_lng,
+        ballast_drop: data.ballast_drop || "--",
+        ballast_drop_count: (typeof data.ballast_drop_count !== "undefined") ? data.ballast_drop_count : "--",
+        ballast_drop_time: data.ballast_drop_time || "--"  // Neues Feld für Ballast Drop Zeit hinzugefügt
+      };
+    }
+
+    // Live-Daten und Map alle 2 Sekunden aktualisieren
+    function fetchAndUpdate() {
+      fetch('wuzi_data.txt')
+        .then(r => r.text())
+        .then(text => {
+          const data = parseTextData(text);
+          updateDisplay(data);
+          updateMap(data);
+        });
+    }
+    setInterval(fetchAndUpdate, 2000);
+    fetchAndUpdate();
+  </script>
+</body>
+</html>
