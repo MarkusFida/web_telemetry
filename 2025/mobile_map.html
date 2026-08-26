@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Wuzi Vario Map</title>
+  <title>Wuzi Vario Mobile Map</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
   <script src="https://unpkg.com/togeojson"></script>
   <script src="https://unpkg.com/leaflet-filelayer@1.2.0/leaflet.filelayer.js"></script>
@@ -248,8 +248,7 @@
     }
     #trajektorie-controls.collapsed #traj-list-section,
     #trajektorie-controls.collapsed #traj-file-section,
-    #trajektorie-controls.collapsed #traj-buttons-section,
-    #trajektorie-controls.collapsed #custom-forecast-section {
+    #trajektorie-controls.collapsed #traj-buttons-section {
       display: none;
     }
     .traj-label {
@@ -417,6 +416,11 @@
       box-shadow: 0 0 8px #000;
       cursor: pointer;
     }
+    #mobile-settings-btn,
+    #mobile-settings-backdrop,
+    #mobile-settings-drawer {
+      display: none;
+    }
     @media (max-width: 800px) {
     html, body, #map {
       width: 100vw !important;
@@ -521,10 +525,636 @@
       z-index: 1100; /* Höher als Buttons */
     }
   }
+
+  /* Mobile controls use larger touch targets and keep the map visible. */
+  @media (max-width: 800px), (pointer: coarse) {
+    :root {
+      --mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .top-nav {
+      display: none !important;
+      z-index: 1400;
+    }
+
+    .top-nav a {
+      min-height: 44px;
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 14px;
+    }
+
+    .leaflet-control-zoom a {
+      width: 44px !important;
+      height: 44px !important;
+      line-height: 44px !important;
+      font-size: 1.5em;
+    }
+
+    .leaflet-control-zoom {
+      display: none !important;
+    }
+
+    .leaflet-control-layers {
+      top: 8px !important;
+      right: 8px !important;
+    }
+
+    .leaflet-control-layers-toggle {
+      width: 44px !important;
+      height: 44px !important;
+    }
+
+    #compass-container {
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%) scale(0.82);
+      transform-origin: top center;
+    }
+
+    #trajektorie-controls {
+      left: 8px !important;
+      right: 8px !important;
+      bottom: calc(8px + var(--mobile-safe-bottom)) !important;
+      max-height: min(68vh, 620px);
+      min-width: 0 !important;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 10px !important;
+      border: 1px solid #555;
+      font-size: 0.95em;
+    }
+
+    #trajektorie-controls.collapsed {
+      height: 48px;
+      overflow: hidden;
+    }
+
+    #mobile-settings-drawer #trajektorie-controls.collapsed #traj-list-section,
+    #mobile-settings-drawer #trajektorie-controls.collapsed #custom-forecast-section,
+    #mobile-settings-drawer #trajektorie-controls.collapsed #traj-file-section,
+    #mobile-settings-drawer #trajektorie-controls.collapsed #traj-buttons-section,
+    #mobile-settings-drawer #track-time-label.collapsed #track-time-body {
+      display: none !important;
+    }
+
+    #traj-header,
+    #track-time-head {
+      min-height: 44px;
+    }
+
+    #traj-toggle-btn,
+    #track-time-toggle {
+      width: 44px;
+      height: 44px;
+      padding: 8px;
+    }
+
+    #trajektorie-list {
+      max-height: 22vh;
+    }
+
+    .traj-label,
+    #trajektorie-controls button,
+    #trajektorie-controls select,
+    #trajektorie-controls input[type="number"] {
+      min-height: 42px;
+    }
+
+    .custom-forecast-row {
+      grid-template-columns: 30px minmax(92px, 1.2fr) 56px 10px minmax(74px, 0.9fr) 40px;
+      gap: 4px;
+    }
+
+    .custom-forecast-row > span {
+      font-size: 0.72em !important;
+      text-align: center;
+    }
+
+    .custom-forecast-row input[type="number"] {
+      min-width: 0;
+      padding: 2px 4px;
+      font-size: 0.9em;
+    }
+
+    #custom-forecast-section .forecast-toggle-row {
+      gap: 4px !important;
+      font-size: 0.9em;
+    }
+
+    #custom-forecast-section #live-forecast-duration,
+    #custom-forecast-section #menu-linear-forecast-duration {
+      width: 50px !important;
+    }
+
+    #custom-forecast-section #live-forecast-model {
+      width: 78px !important;
+    }
+
+    .custom-forecast-row label {
+      grid-column: 2 / -1;
+    }
+
+    #track-time-label {
+      right: 8px !important;
+      bottom: calc(8px + var(--mobile-safe-bottom)) !important;
+      width: min(92vw, 360px) !important;
+      max-height: 38vh;
+      padding: 8px !important;
+    }
+
+    #track-time-label input,
+    #track-time-label button {
+      min-height: 42px;
+      box-sizing: border-box;
+    }
+
+    #draw-circle-btn,
+    #gps-center-btn {
+      display: block !important;
+      top: 58px !important;
+      right: 8px !important;
+      min-width: 44px;
+      min-height: 44px;
+      padding: 8px 12px !important;
+      font-size: 0.9em !important;
+    }
+
+    #gps-center-btn {
+      top: 108px !important;
+    }
+
+    #circle-input-panel {
+      top: 160px !important;
+      right: 8px !important;
+      left: 8px;
+      padding: 10px !important;
+    }
+
+    #circle-input-panel label {
+      display: block;
+      margin: 0 0 8px !important;
+    }
+
+    #circle-input-panel input,
+    #circle-draw-manual {
+      min-height: 42px;
+      box-sizing: border-box;
+    }
+
+    .leaflet-popup-content {
+      max-width: 76vw;
+    }
+
+    .leaflet-popup-content button {
+      min-height: 40px;
+      padding: 6px 10px !important;
+    }
+
+    .leaflet-interactive {
+      touch-action: manipulation;
+    }
+
+    html, body, #map {
+      height: 100dvh !important;
+      min-height: 100dvh !important;
+    }
+
+    #mobile-settings-btn {
+      position: fixed;
+      display: block;
+      top: calc(8px + env(safe-area-inset-top, 0px));
+      right: 8px;
+      left: auto;
+      z-index: 1600;
+      width: 48px;
+      height: 48px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: #4b5563;
+      box-shadow: none;
+      font-size: 1.5em;
+      cursor: pointer;
+    }
+
+    #mobile-settings-backdrop {
+      position: fixed;
+      display: block;
+      inset: 0;
+      z-index: 1490;
+      background: rgba(0, 0, 0, 0.45);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    #mobile-settings-drawer {
+      position: fixed;
+      display: block;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 1500;
+      width: 100vw;
+      box-sizing: border-box;
+      padding: calc(12px + env(safe-area-inset-top, 0px)) 10px calc(12px + env(safe-area-inset-bottom, 0px));
+      background: #f6f7f9;
+      color: #1f2933;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      box-shadow: 0 0 18px rgba(0, 0, 0, 0.28);
+      transform: translateX(-105%);
+      transition: transform 0.25s ease;
+    }
+
+    body.mobile-settings-open #mobile-settings-drawer {
+      transform: translateX(0);
+    }
+
+    body.mobile-settings-open #mobile-settings-btn {
+      display: none !important;
+    }
+
+    body.mobile-settings-open #mobile-settings-backdrop {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    #mobile-settings-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 48px;
+      margin: 0 -10px 10px;
+      padding: 0 10px 8px;
+      border-bottom: 1px solid #d9dee5;
+      color: #1f2933;
+      font-size: 1.15em;
+      font-weight: bold;
+    }
+
+    #mobile-settings-close {
+      width: 44px;
+      height: 44px;
+      border: 0;
+      border-radius: 8px;
+      background: #e9edf2;
+      color: #1f2933;
+      font-size: 1.4em;
+    }
+
+    #mobile-map-settings-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 44px;
+      padding: 0 10px;
+      border-bottom: 1px solid #d9dee5;
+      color: #1f2933;
+      font-weight: bold;
+    }
+
+    #mobile-map-settings-toggle {
+      width: 44px;
+      height: 44px;
+      padding: 8px;
+      border: 1px solid #cbd3db;
+      border-radius: 8px;
+      background: #eef1f4;
+      color: #1f2933;
+    }
+
+    #mobile-settings-drawer #traj-toggle-btn,
+    #mobile-settings-drawer #track-time-toggle,
+    #mobile-settings-drawer #mobile-map-settings-toggle {
+      width: 44px;
+      height: 44px;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid #cbd3db !important;
+      border-radius: 8px;
+      background: #eef1f4 !important;
+      color: #1f2933 !important;
+      box-shadow: none !important;
+    }
+
+    #mobile-settings-drawer #traj-toggle-btn svg,
+    #mobile-settings-drawer #track-time-toggle svg,
+    #mobile-settings-drawer #mobile-map-settings-toggle svg {
+      width: 20px;
+      height: 20px;
+      transition: transform 0.2s ease;
+    }
+
+    #mobile-settings-drawer #trajektorie-controls.collapsed #traj-toggle-btn svg,
+    #mobile-settings-drawer #track-time-label.collapsed #track-time-toggle svg,
+    #mobile-map-settings.collapsed #mobile-map-settings-toggle svg {
+      transform: rotate(-90deg);
+    }
+
+    #mobile-settings-drawer #traj-header,
+    #mobile-settings-drawer #track-time-head,
+    #mobile-map-settings-head {
+      min-height: 44px;
+      box-sizing: border-box;
+      align-items: center;
+    }
+
+    #mobile-map-settings.collapsed .leaflet-control-layers {
+      display: none !important;
+    }
+
+    #mobile-settings-drawer #trajektorie-controls,
+    #mobile-settings-drawer #track-time-label {
+      background: #fff !important;
+      color: #1f2933 !important;
+      border: 1px solid #d9dee5;
+      border-radius: 6px;
+    }
+
+    #mobile-settings-drawer #track-time-label:not(.collapsed) {
+      padding: 10px !important;
+      gap: 10px !important;
+      align-items: flex-start !important;
+      box-shadow: none !important;
+    }
+
+    #mobile-settings-drawer #track-time-label {
+      box-shadow: none !important;
+    }
+
+    #mobile-settings-drawer #track-time-head {
+      min-height: 44px;
+      padding-bottom: 0;
+      border-bottom: 1px solid #e3e7eb;
+    }
+
+    #mobile-settings-drawer #track-time-body {
+      padding-top: 0;
+    }
+
+    #mobile-settings-drawer #mobile-map-settings {
+      background: #fff;
+      border: 1px solid #d9dee5;
+      border-radius: 6px;
+      margin: 0 0 10px;
+      overflow: hidden;
+    }
+
+    #mobile-settings-drawer #trajektorie-controls.collapsed,
+    #mobile-settings-drawer #track-time-label.collapsed,
+    #mobile-settings-drawer #mobile-map-settings.collapsed {
+      height: 48px !important;
+      min-height: 48px;
+      padding: 0 10px !important;
+      overflow: hidden !important;
+    }
+
+    #mobile-settings-drawer #mobile-map-settings.collapsed {
+      padding: 0 !important;
+    }
+
+    #mobile-settings-drawer #mobile-map-settings.collapsed,
+    #mobile-settings-drawer #trajektorie-controls.collapsed,
+    #mobile-settings-drawer #track-time-label.collapsed {
+      display: block !important;
+      width: 100% !important;
+      height: 48px !important;
+      min-height: 48px !important;
+      margin: 0 0 10px !important;
+      padding: 0 !important;
+      box-sizing: border-box;
+      overflow: hidden !important;
+      background: #fff !important;
+      border: 1px solid #d9dee5 !important;
+      border-radius: 6px !important;
+    }
+
+    #mobile-settings-drawer #mobile-map-settings.collapsed > #mobile-map-settings-head,
+    #mobile-settings-drawer #trajektorie-controls.collapsed > #traj-header,
+    #mobile-settings-drawer #track-time-label.collapsed > #track-time-head {
+      display: flex;
+      width: 100%;
+      height: 46px;
+      min-height: 46px;
+      box-sizing: border-box;
+      margin: 0 !important;
+      padding: 0 10px !important;
+      border-bottom: 0;
+    }
+
+    #mobile-settings-drawer #traj-header {
+      border-bottom: 1px solid #e3e7eb;
+      color: #1f2933;
+    }
+
+    #mobile-settings-drawer #traj-toggle-btn,
+    #mobile-settings-drawer #track-time-toggle,
+    #mobile-settings-drawer button {
+      background: #eef1f4 !important;
+      color: #1f2933 !important;
+      border: 1px solid #cbd3db !important;
+      box-shadow: none !important;
+    }
+
+    #mobile-settings-drawer input,
+    #mobile-settings-drawer select {
+      background: #fff !important;
+      color: #1f2933 !important;
+      border: 1px solid #cbd3db !important;
+    }
+
+    #mobile-settings-drawer input[type="checkbox"] {
+      accent-color: #52606d;
+    }
+
+    #mobile-settings-drawer input[type="color"] {
+      padding: 2px;
+    }
+
+    #mobile-settings-drawer #custom-forecast-section {
+      border-color: #d9dee5 !important;
+    }
+
+    #mobile-settings-drawer .traj-label {
+      border-bottom: 1px solid #edf0f2;
+      color: #1f2933;
+    }
+
+    #mobile-settings-drawer .traj-label span[style*="color"] {
+      color: #52606d !important;
+    }
+
+    #mobile-settings-drawer .traj-label:hover,
+    #mobile-settings-drawer .traj-label.selected {
+      background: #f0f3f5;
+    }
+
+    #mobile-settings-drawer #trajektorie-filelist {
+      color: #52606d !important;
+    }
+
+    #mobile-settings-drawer .leaflet-control-layers {
+      position: static !important;
+      display: block !important;
+      margin: 0 0 10px;
+      padding: 10px;
+      border: 1px solid #d9dee5;
+      border-radius: 6px;
+      background: #fff;
+      box-shadow: none;
+    }
+
+    #mobile-settings-drawer .leaflet-control-layers-toggle {
+      display: none;
+    }
+
+    #mobile-settings-drawer .leaflet-control-layers-list {
+      display: block !important;
+      color: #1f2933;
+    }
+
+    #compass-container {
+      top: calc(8px + env(safe-area-inset-top, 0px));
+      left: 8px;
+      width: auto;
+      height: auto;
+      transform: none;
+      z-index: 1400;
+    }
+
+    #compass-rose {
+      width: auto;
+      height: auto;
+    }
+
+    #compass-arrow,
+    #compass-degree {
+      display: none;
+    }
+
+    #compass-info {
+      position: static;
+      transform: none;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+      padding: 6px 9px;
+      margin: 0;
+      border: 1px solid rgba(75, 85, 99, 0.45);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #1f2933;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+      font-size: 0.85em;
+    }
+
+    #compass-info .compass-info-block {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    #compass-info span {
+      color: #1f2933 !important;
+      font-size: 1em !important;
+    }
+
+    #compass-info .live-data-label {
+      display: none;
+    }
+
+    #mobile-track-direction {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      order: 0;
+      gap: 0;
+      margin: 0;
+      padding: 0;
+      border-top: 0;
+      color: #1f2933;
+      font-size: 1em;
+      font-weight: bold;
+    }
+
+    #mobile-track-arrow {
+      display: inline-block;
+      color: #4b5563;
+      font-size: 1.75em;
+      font-weight: 900;
+      text-shadow: 0 1px 1px rgba(31, 41, 51, 0.35);
+      line-height: 1;
+      transform-origin: 50% 55%;
+    }
+
+    #mobile-track-degree,
+    #mobile-track-direction > span:last-child {
+      display: none;
+    }
+
+    #mobile-settings-drawer #trajektorie-controls,
+    #mobile-settings-drawer #track-time-label {
+      position: static !important;
+      transform: none !important;
+      width: 100% !important;
+      max-width: none !important;
+      max-height: none !important;
+      box-sizing: border-box;
+      margin: 0 0 10px;
+      box-shadow: none;
+    }
+
+    #mobile-settings-drawer #trajektorie-controls {
+      overflow: visible;
+    }
+
+    #mobile-settings-drawer #track-time-label {
+      display: flex !important;
+    }
+
+    #mobile-settings-drawer #trajektorie-controls.collapsed {
+      height: auto;
+      overflow: visible;
+    }
+
+    #draw-circle-btn,
+    #gps-center-btn {
+      display: none !important;
+    }
+
+    body.mobile-settings-open {
+      overflow: hidden;
+    }
+  }
   </style>
 </head>
 <body>
   <!-- Der Rest des HTML bleibt unverändert -->
+  <button id="mobile-settings-btn" type="button" aria-label="Open map settings" aria-expanded="false" title="Map settings">&#9776;</button>
+  <div id="mobile-settings-backdrop" aria-hidden="true"></div>
+  <div id="mobile-settings-drawer" aria-hidden="true">
+    <div id="mobile-settings-head">
+      <span>Map settings</span>
+      <button id="mobile-settings-close" type="button" aria-label="Close map settings">&#10005;</button>
+    </div>
+    <div id="mobile-map-settings">
+      <div id="mobile-map-settings-head">
+        <span>Map settings</span>
+        <button id="mobile-map-settings-toggle" type="button" aria-label="Toggle map settings" aria-expanded="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6,9 12,15 18,9"></polyline>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
   <div class="top-nav">
     <a href="live.html" target="_blank">Live data</a>
     <!-- <a href="chart_1.html" target="_blank">Chart</a>
@@ -545,8 +1175,14 @@
       <span id="trajektorie-list"></span>
     </div>
     <div id="custom-forecast-section">
-      <div class="calculated-forecast-settings" style="display:none;">
-      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+      <div style="font-weight:bold;">Live forecast levels (950h-500h fixed) / free altitudes (ft) / duration (h):</div>
+      <div class="forecast-toggle-row" style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+        <span>Linear forecast:</span>
+        <input id="menu-linear-forecast-checkbox" type="checkbox" checked title="Show linear forecast">
+        <input id="menu-linear-forecast-duration" type="number" value="24" min="1" max="48" step="1" title="Linear forecast duration in hours" style="width:58px;background:#111;color:#ffe066;border:1px solid #555;border-radius:4px;padding:3px 5px;">
+        <span>h</span>
+      </div>
+      <div class="forecast-toggle-row" style="display:flex;align-items:center;gap:6px;margin-top:6px;">
         <span>Live forecast:</span>
         <input id="menu-live-forecast-checkbox" type="checkbox" checked title="Show live forecast">
         <input id="live-forecast-duration" type="number" value="24" min="1" max="48" step="1" title="Live forecast duration in hours" style="width:58px;background:#111;color:#ffe066;border:1px solid #555;border-radius:4px;padding:3px 5px;">
@@ -563,14 +1199,6 @@
           Refresh
         </label>
       </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
-        <span>Linear forecast:</span>
-        <input id="menu-linear-forecast-checkbox" type="checkbox" checked title="Show linear forecast">
-        <input id="menu-linear-forecast-duration" type="number" value="24" min="1" max="48" step="1" title="Linear forecast duration in hours" style="width:58px;background:#111;color:#ffe066;border:1px solid #555;border-radius:4px;padding:3px 5px;">
-        <span>h</span>
-      </div>
-      <div class="calculated-forecast-settings" style="display:none;">
       <div class="custom-forecast-row fixed-level-row">
         <input type="checkbox" class="custom-forecast-enabled" checked>
         <span class="custom-forecast-level-label" data-hpa="950" title="Fixed pressure level, not selectable">950 hPa</span>
@@ -736,7 +1364,6 @@
         <label style="font-size:0.8em;display:flex;align-items:center;gap:2px;margin-left:8px;" title="Refresh automatically every 10 minutes"><input type="checkbox" class="custom-forecast-auto"> Auto</label>
       </div>
       <button id="custom-forecast-apply" style="margin-top:8px;background:#333;color:#ffe066;border-radius:6px;padding:4px 10px;border:none;cursor:pointer;font-weight:bold;width:100%;">Calculate forecast</button>
-      </div>
     </div>
     <div id="traj-file-section">
       <div style="display:flex;flex-direction:column;align-items:flex-start;">
@@ -758,7 +1385,11 @@
   <div id="track-time-label" style="color:#ffe066;z-index:1200;background:#222;padding:8px 10px;border-radius:8px;box-shadow:0 0 8px #000;font-size:0.95em;display:flex;flex-direction:column;gap:8px;align-items:flex-start;">
     <div id="track-time-head">
       <span>Track range</span>
-      <button id="track-time-toggle" type="button" title="Minimize">_</button>
+      <button id="track-time-toggle" type="button" title="Toggle track range" aria-expanded="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6,9 12,15 18,9"></polyline>
+        </svg>
+      </button>
     </div>
     <div id="track-time-body">
       <label style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
@@ -847,16 +1478,24 @@
     <div id="compass-rose">
       <div id="compass-info">
           <div class="compass-info-block">
+            <span class="live-data-label">Height</span>
             <span id="compass-alt" style="font-size:1.5em; font-weight:bold;">--</span>
             <span style="font-size:1.1em;">ft</span>
           </div>
           <div class="compass-info-block">
+            <span class="live-data-label">Speed</span>
             <span id="compass-speed" style="font-size:1.5em; font-weight:bold;">--</span>
             <span style="font-size:1.1em;">kts</span>
           </div>
           <div class="compass-info-block">
-            <span id="compass-vario" style="font-size:1.5em; font-weight:bold;">--</span>
-            <span style="font-size:1.1em;">m/s</span>
+            <span class="live-data-label">Track</span>
+            <span id="compass-track" style="font-size:1.5em; font-weight:bold;">--</span>
+            <span style="font-size:1.1em;">deg</span>
+          </div>
+          <div id="mobile-track-direction">
+            <span id="mobile-track-arrow">&#8593;</span>
+            <span id="mobile-track-degree">--</span>
+            <span>deg</span>
           </div>
         </div>
       <div id="compass-arrow">&#8593;</div>
@@ -867,6 +1506,8 @@
   <script>
     // Der gesamte JavaScript-Code bleibt unverändert
     let map, marker, trackLine;
+    let mobileReloadZoomPending = true;
+    let mobileInitialTrackLoadFinished = false;
     let extrapolatedTrackLines = [];
     let extrapolatedHourMarkers = [];
     let extrapolatedSunMarkers = [];
@@ -975,11 +1616,11 @@
         else syncFreeAltitudeRow(row);
       });
     }
+
     let lastIconEuRequest = 0;
     let showLinearForecast = true;
     let linearForecastDuration = 24;
     let showIconEuForecast = true;
-    const showCalculatedForecastTrajectories = false;
     let lastKnownGpsData = null;
     let lastKnownCourse = 0;
     let lastKnownSpeed = 0;
@@ -991,8 +1632,11 @@
     let trajWaypointMarkers = [];
     let trajHourMarkers = [];
     let trajSelected = [];
+    let allTrajectoriesVisible = true;
     let geoHeight = "--"; // Bodenhöhe, falls benötigt
     let geoElevationMeters = null;
+    let lastTrajectoryPopupKey = "";
+    let lastTrajectoryPopupAt = 0;
 
     let loadedFileNames = [];
     let lastCircleData = null; // {lat, lng, radius}
@@ -1126,6 +1770,11 @@
     });
     L.control.layers(baseLayers, overlays).addTo(map);
     loadEpr131KmlOverlay();
+    const savedMobileBaseLayer = localStorage.getItem('mobileMapBaseLayer');
+    if (savedMobileBaseLayer && baseLayers[savedMobileBaseLayer] && savedMobileBaseLayer !== 'OSM') {
+      map.removeLayer(osm);
+      baseLayers[savedMobileBaseLayer].addTo(map);
+    }
 
     setTimeout(() => {
       // Suche das Layer-Control
@@ -1160,20 +1809,18 @@
         // ADSB checkbox event handler removed - ADSB is disabled
         const trajToggleCheckbox = trajDiv.querySelector('#traj-toggle-checkbox');
         trajToggleCheckbox.addEventListener('change', function() {
-          const trajCtrl = document.getElementById('trajektorie-controls');
+          allTrajectoriesVisible = this.checked;
           if (this.checked) {
-            // Fenster, Trajektorien-Layer und Zeitpunkte einblenden
-            trajCtrl.style.display = "flex";
-            trajLayers.forEach(l => { if (!map.hasLayer(l)) l.addTo(map); });
+            // Only show the trajectory layers on the map.
+            setAllTrajectoryLayersVisible(true);
             // Zeitpunkte (Stundenmarker, Waypointmarker, Nummern) wieder einblenden
             trajHourMarkers.forEach(m => { if (!map.hasLayer(m)) m.addTo(map); });
             trajWaypointMarkers.forEach(m => { if (!map.hasLayer(m)) m.addTo(map); });
             if (typeof trajHourNumberMarkers !== "undefined")
-              trajHourNumberMarkers.forEach(m => { if (!map.hasLayer(m)) m.addTo(map); });
+              trajHourNumberMarkers.forEach(m => { if (map.hasLayer(m)) map.removeLayer(m); });
           } else {
-            // Fenster, Trajektorien-Layer und Zeitpunkte ausblenden
-            trajCtrl.style.display = "none";
-            trajLayers.forEach(l => { if (map.hasLayer(l)) map.removeLayer(l); });
+            // Keep the settings menu visible and hide only map layers.
+            setAllTrajectoryLayersVisible(false);
             // Zeitpunkte (Stundenmarker, Waypointmarker, Nummern) ausblenden
             trajHourMarkers.forEach(m => { if (map.hasLayer(m)) map.removeLayer(m); });
             trajWaypointMarkers.forEach(m => { if (map.hasLayer(m)) map.removeLayer(m); });
@@ -1206,7 +1853,10 @@
       }
     });
 
-    map.on('baselayerchange', function() {
+    map.on('baselayerchange', function(event) {
+      if (event.name && baseLayers[event.name]) {
+        localStorage.setItem('mobileMapBaseLayer', event.name);
+      }
       if (!map.hasLayer(openAIP)) {
         openAIP.addTo(map);
       }
@@ -1265,7 +1915,237 @@
       };
     }
 
+    function addMobileTrajectoryTouchTarget(poly) {
+      const touchTarget = L.polyline(poly.getLatLngs(), {
+        color: '#000',
+        weight: 28,
+        opacity: 0.01,
+        interactive: true
+      }).addTo(map);
+      touchTarget.on('click', event => poly.fire('click', event));
+      poly._mobileTouchTarget = touchTarget;
+      return touchTarget;
+    }
+
+    function formatElapsedFromSeconds(totalSeconds) {
+      if (!Number.isFinite(totalSeconds)) return "--";
+      const diffSec = Math.max(0, Math.round(totalSeconds));
+      const h = Math.floor(diffSec / 3600);
+      const m = Math.floor((diffSec % 3600) / 60);
+      const s = diffSec % 60;
+      if (h > 0) return `${h} h ${m} min`;
+      if (m > 0) return `${m} min ${s} s`;
+      return `${s} s`;
+    }
+
+    function projectPointToTrajectory(latlngs, targetLatLng) {
+      if (!Array.isArray(latlngs) || latlngs.length === 0 || !targetLatLng) return null;
+      if (latlngs.length === 1) {
+        return {
+          point: L.latLng(latlngs[0][0], latlngs[0][1]),
+          startIdx: 0,
+          endIdx: 0,
+          factor: 0
+        };
+      }
+
+      const targetPoint = map.latLngToLayerPoint(targetLatLng);
+      let best = null;
+      let bestDistanceSq = Infinity;
+
+      for (let i = 1; i < latlngs.length; i++) {
+        const start = L.latLng(latlngs[i - 1][0], latlngs[i - 1][1]);
+        const end = L.latLng(latlngs[i][0], latlngs[i][1]);
+        const startPoint = map.latLngToLayerPoint(start);
+        const endPoint = map.latLngToLayerPoint(end);
+        const vx = endPoint.x - startPoint.x;
+        const vy = endPoint.y - startPoint.y;
+        const segLenSq = vx * vx + vy * vy;
+
+        let factor = 0;
+        if (segLenSq > 0) {
+          factor = ((targetPoint.x - startPoint.x) * vx + (targetPoint.y - startPoint.y) * vy) / segLenSq;
+          factor = Math.max(0, Math.min(1, factor));
+        }
+
+        const projectedPoint = L.point(startPoint.x + vx * factor, startPoint.y + vy * factor);
+        const dx = targetPoint.x - projectedPoint.x;
+        const dy = targetPoint.y - projectedPoint.y;
+        const distanceSq = dx * dx + dy * dy;
+        if (distanceSq < bestDistanceSq) {
+          bestDistanceSq = distanceSq;
+          best = {
+            point: map.layerPointToLatLng(projectedPoint),
+            startIdx: i - 1,
+            endIdx: i,
+            factor
+          };
+        }
+      }
+
+      return best;
+    }
+
+    function pressureToIsaAltitudeFeet(pressureHpa) {
+      const pressure = Number(pressureHpa);
+      if (!Number.isFinite(pressure) || pressure <= 0) return null;
+      return 145366.45 * (1 - Math.pow(pressure / 1013.25, 0.190284));
+    }
+
+    function modelHeightInterpolationQuality(source) {
+      const pressure = Number(source && source.pressure);
+      const levels = source && Array.isArray(source.pressureLevels) ? source.pressureLevels.map(Number) : [];
+      if (!Number.isFinite(pressure) || levels.length < 2 || !Number.isFinite(levels[0]) || !Number.isFinite(levels[1])) return null;
+
+      const lower = Math.min(levels[0], levels[1]);
+      const upper = Math.max(levels[0], levels[1]);
+      const span = upper - lower;
+      if (span === 0) {
+        const pressureDistance = Math.abs(pressure - lower);
+        const score = pressureDistance < 0.5 ? 10 : Math.max(1, Math.min(6, Math.round(6 - Math.min(pressureDistance / 50, 1) * 5)));
+        return { score, pressure, lower, upper, factor: 0 };
+      }
+      const factor = span > 0 ? Math.max(0, Math.min(1, (pressure - lower) / span)) : 0;
+      const distanceFromModelLevel = Math.min(factor, 1 - factor) * 2;
+      const score = Math.max(1, Math.min(10, Math.round(10 - distanceFromModelLevel * 9)));
+      return { score, pressure, lower, upper, factor };
+    }
+
+    function modelHeightQualityBarHtml(source) {
+      const quality = modelHeightInterpolationQuality(source);
+      if (!quality) return "";
+      const safeScore = quality.score;
+      const percent = safeScore * 10;
+      const hue = Math.round((safeScore - 1) / 9 * 120);
+      const color = `hsl(${hue}, 85%, 45%)`;
+      const lowerFeet = pressureToIsaAltitudeFeet(quality.lower);
+      const upperFeet = pressureToIsaAltitudeFeet(quality.upper);
+      const levelText = lowerFeet !== null && upperFeet !== null
+        ? quality.lower === quality.upper
+          ? `exactly on ${Math.round(lowerFeet).toLocaleString("en-US")} ft (${quality.lower} hPa)`
+          : `${Math.round(Math.min(lowerFeet, upperFeet)).toLocaleString("en-US")} - ${Math.round(Math.max(lowerFeet, upperFeet)).toLocaleString("en-US")} ft (${quality.upper} - ${quality.lower} hPa)`
+        : `${quality.upper} - ${quality.lower} hPa`;
+      return `<b>Height model quality:</b> ${safeScore}/10<br>
+        <div style="margin-top:3px;background:#2b2b2b;border:1px solid #555;border-radius:6px;height:9px;overflow:hidden;">
+          <div style="height:100%;width:${percent}%;background:${color};"></div>
+        </div>
+        <span style="font-size:0.9em;color:#ccc;">Pressure: ${quality.pressure.toFixed(1)} hPa</span><br>
+        <span style="font-size:0.9em;color:#ccc;">Interpolated between: ${levelText}</span>`;
+    }
+
+    function showTrajectoryPopupAt(trackTitle, latlngs, times, clickedLatLng, extraDetailsHtml = "", modelHeightSource = null) {
+      const projected = projectPointToTrajectory(latlngs, clickedLatLng);
+      if (!projected) return;
+
+      // Avoid double popups when overlapping trajectory line and touch target both emit click.
+      const popupKey = `${trackTitle}|${projected.point.lat.toFixed(5)}|${projected.point.lng.toFixed(5)}`;
+      const nowMs = Date.now();
+      if (popupKey === lastTrajectoryPopupKey && (nowMs - lastTrajectoryPopupAt) < 220) return;
+      lastTrajectoryPopupKey = popupKey;
+      lastTrajectoryPopupAt = nowMs;
+
+      const lat = projected.point.lat.toFixed(6);
+      const lng = projected.point.lng.toFixed(6);
+
+      const getTimeValue = index => {
+        if (!Array.isArray(times) || index < 0 || index >= times.length) return null;
+        const value = times[index];
+        if (!value) return null;
+        if (value instanceof Date) return value;
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+      };
+
+      const startTime = getTimeValue(projected.startIdx);
+      const endTime = getTimeValue(projected.endIdx);
+      const modelHeightQualityHtml = modelHeightQualityBarHtml(modelHeightSource);
+      let interpolatedTime = null;
+      if (startTime && endTime) {
+        interpolatedTime = new Date(startTime.getTime() + (endTime.getTime() - startTime.getTime()) * projected.factor);
+      } else if (startTime) {
+        interpolatedTime = startTime;
+      } else if (endTime) {
+        interpolatedTime = endTime;
+      }
+
+      const utc = interpolatedTime
+        ? interpolatedTime.toISOString().replace('T', ' ').replace(/\..+/, '') + ' UTC'
+        : '--';
+
+      let speed = "--";
+      if (startTime && endTime) {
+        const dt = (endTime - startTime) / 1000;
+        if (dt > 0) {
+          const distMeters = map.distance(
+            L.latLng(latlngs[projected.startIdx][0], latlngs[projected.startIdx][1]),
+            L.latLng(latlngs[projected.endIdx][0], latlngs[projected.endIdx][1])
+          );
+          speed = ((distMeters / dt) * 1.94384).toFixed(1);
+        }
+      }
+
+      let dir = "--";
+      if (projected.endIdx !== projected.startIdx) {
+        const dy = latlngs[projected.endIdx][0] - latlngs[projected.startIdx][0];
+        const dx = latlngs[projected.endIdx][1] - latlngs[projected.startIdx][1];
+        let heading = Math.atan2(dx, dy) * 180 / Math.PI;
+        heading = (heading + 360) % 360;
+        dir = `${heading.toFixed(0)}°`;
+      }
+
+      let sinceStart = "--";
+      const overallStartTime = getTimeValue(0);
+      if (interpolatedTime && overallStartTime) {
+        sinceStart = formatElapsedFromSeconds((interpolatedTime - overallStartTime) / 1000);
+      }
+
+      // Hide any sticky/hover tooltips from trajectory layers before showing the click popup.
+      map.eachLayer(layer => {
+        if (layer && typeof layer.closeTooltip === 'function') {
+          layer.closeTooltip();
+        }
+      });
+
+      L.popup()
+        .setLatLng(projected.point)
+        .setContent(
+          `<b style="color:#00bfff;font-size:1.1em;">${trackTitle}</b><br>
+          <b>UTC:</b> ${utc}<br>
+          <b>Since start:</b> ${sinceStart}<br>
+          <b>Speed:</b> ${speed} kt<br>
+          <b>Direction:</b> ${dir}<br>
+          <b>Lat:</b> ${lat}<br>
+          <b>Lon:</b> ${lng}<br>
+          ${modelHeightQualityHtml}
+          ${extraDetailsHtml ? `<hr style="border:0;border-top:1px solid #555;margin:6px 0;">${extraDetailsHtml}` : ""}`
+        )
+        .openOn(map);
+    }
+
+    function trajectorySeriesFromPoints(points) {
+      const latlngs = [];
+      const times = [];
+      (points || []).forEach(point => {
+        if (!point) return;
+        if (Array.isArray(point)) {
+          const lat = Number(point[0]);
+          const lon = Number(point[1]);
+          if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+          latlngs.push([lat, lon]);
+          times.push(null);
+          return;
+        }
+        const lat = Number(point.lat);
+        const lon = Number(point.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+        latlngs.push([lat, lon]);
+        times.push(point.time || null);
+      });
+      return { latlngs, times };
+    }
+
     function loadTrackFromDb(doFit = true) {
+      const isInitialTrackLoad = !mobileInitialTrackLoadFinished;
       if (trackToLiveCheckbox && trackToLiveCheckbox.checked) {
         trackToInput.value = formatDateTimeUtcInput(new Date());
       }
@@ -1284,12 +2164,20 @@
         const points = Array.isArray(data) ? data : (data.data || []);
         if (!points || points.length === 0) {
           console.warn("Keine Track-Daten erhalten.");
+          if (isInitialTrackLoad) {
+            mobileInitialTrackLoadFinished = true;
+            applyMobileReloadView();
+          }
           return;
         }
         const latlngs = points.map(point => [point.lat, point.lon]).filter(coord => coord[0] && coord[1]);
         console.log(`Track-Daten geladen: ${latlngs.length} Punkte`);  // Debug: Anzahl der Punkte loggen
         if (latlngs.length === 0) {
           console.warn("Keine gültigen Koordinaten in Track-Daten.");
+          if (isInitialTrackLoad) {
+            mobileInitialTrackLoadFinished = true;
+            applyMobileReloadView();
+          }
           return;
         }
         if (window.dbTrackLine) map.removeLayer(window.dbTrackLine);
@@ -1297,10 +2185,24 @@
         if (doFit) {
           map.fitBounds(window.dbTrackLine.getBounds().pad(0.1));
         }
+        if (isInitialTrackLoad) {
+          mobileInitialTrackLoadFinished = true;
+          applyMobileReloadView();
+        }
       })
       .catch(err => {
         console.error("Track-API-Fehler:", err);
+        if (isInitialTrackLoad) {
+          mobileInitialTrackLoadFinished = true;
+          applyMobileReloadView();
+        }
       });
+    }
+
+    function applyMobileReloadView() {
+      if (!mobileReloadZoomPending || !mobileInitialTrackLoadFinished || !lastKnownGpsData) return;
+      map.setView([lastKnownGpsData.gps_lat, lastKnownGpsData.gps_lng], 10);
+      mobileReloadZoomPending = false;
     }
 
     const trackFromInput = document.getElementById('track-from-datetime');
@@ -1357,7 +2259,8 @@
     trackTimeToggle.addEventListener('click', function() {
       const panel = document.getElementById('track-time-label');
       panel.classList.toggle('collapsed');
-      this.textContent = panel.classList.contains('collapsed') ? '+' : '_';
+      this.setAttribute('aria-expanded', String(!panel.classList.contains('collapsed')));
+      localStorage.setItem('mobileTrackRangeCollapsed', String(panel.classList.contains('collapsed')));
     });
 
     const defaultTrackTo = new Date();
@@ -1519,113 +2422,11 @@
           const poly = L.polyline(latlngs, {color, weight: 5, opacity: 1, interactive: true});
           poly.addTo(map);
 
-          // Popup bei Klick auf Trajektorie
+          // Popup bei Klick auf Trajektorie mit interpolierten Werten am Klickpunkt
           poly.on('click', function(e) {
-            console.log('Polyline clicked:', e.latlng); // Debug
-            let minDist = Infinity, minIdx = -1;
-            for (let i = 0; i < latlngs.length; i++) {
-              const d = map.distance(e.latlng, L.latLng(latlngs[i]));
-              if (d < minDist) {
-                minDist = d;
-                minIdx = i;
-              }
-            }
-            if (minIdx >= 0) {
-              const t = times[minIdx];
-              const utc = t ? t.toISOString().replace('T', ' ').replace(/\..+/, '') + " UTC" : "--";
-              const lat = latlngs[minIdx][0].toFixed(6);
-              const lng = latlngs[minIdx][1].toFixed(6);
-
-              let speed = "--", dir = "--";
-              if (minIdx > 0 && times[minIdx] && times[minIdx-1]) {
-                const distMeters = map.distance(L.latLng(latlngs[minIdx-1]), L.latLng(latlngs[minIdx]));
-                const dt = (times[minIdx] - times[minIdx-1]) / 1000;
-                if (dt > 0) {
-                  speed = ((distMeters / dt) * 1.94384).toFixed(1);
-                }
-                const dy = latlngs[minIdx][0] - latlngs[minIdx-1][0];
-                const dx = latlngs[minIdx][1] - latlngs[minIdx-1][1];
-                dir = Math.atan2(dx, dy) * 180 / Math.PI;
-                dir = (dir + 360) % 360;
-                dir = dir.toFixed(0) + "°";
-              }
-
-              let sinceStart = "--";
-              if (times[minIdx] && times[0]) {
-                const diffSec = Math.round((times[minIdx] - times[0]) / 1000);
-                const h = Math.floor(diffSec / 3600);
-                const m = Math.floor((diffSec % 3600) / 60);
-                const s = diffSec % 60;
-                if (h > 0) {
-                  sinceStart = `${h} h ${m} min`;
-                } else if (m > 0) {
-                  sinceStart = `${m} min ${s} s`;
-                } else {
-                  sinceStart = `${s} s`;
-                }
-              }
-
-              L.popup()
-                .setLatLng(e.latlng)
-                .setContent(
-                  `<b style="color:#00bfff;font-size:1.1em;">${file.name}</b><br>
-                  <b>UTC:</b> ${utc}<br>
-                  <b>Since start:</b> ${sinceStart}<br>
-                  <b>Speed:</b> ${speed} kt<br>
-                  <b>Direction:</b> ${dir}<br>
-                  <b>Lat:</b> <span id="lat-val">${lat}</span>
-                  <button id="copy-lat-btn" style="margin-left:6px;padding:1px 8px;border-radius:6px;border:none;background:#333;color:#ffe066;cursor:pointer;">Copy</button><br>
-                  <b>Lon:</b> <span id="lon-val">${lng}</span>
-                  <button id="copy-lon-btn" style="margin-left:6px;padding:1px 8px;border-radius:6px;border:none;background:#333;color:#ffe066;cursor:pointer;">Copy</button><br>
-                  <button id="copy-coord-btn" style="margin-top:6px;padding:2px 10px;border-radius:6px;border:none;background:#333;color:#ffe066;cursor:pointer;">Copy lat,lon</button>`                )
-                .openOn(map);
-
-              setTimeout(() => {
-                const btnLat = document.getElementById('copy-lat-btn');
-                const btnLon = document.getElementById('copy-lon-btn');
-                const btnCoord = document.getElementById('copy-coord-btn');
-                if (btnLat) {
-                  btnLat.onclick = function() {
-                    if (navigator.clipboard) {
-                      navigator.clipboard.writeText(lat).then(() => {
-                        btnLat.textContent = "Copied!";
-                        setTimeout(() => btnLat.textContent = "Copy", 1200);
-                      });
-                    } else {
-                      window.prompt("Copy latitude:", lat);
-                    }
-                  };
-                }
-                if (btnLon) {
-                  btnLon.onclick = function() {
-                    if (navigator.clipboard) {
-                      navigator.clipboard.writeText(lng).then(() => {
-                        btnLon.textContent = "Copied!";
-                        setTimeout(() => btnLon.textContent = "Copy", 1200);
-                      });
-                    } else {
-                      window.prompt("Copy longitude:", lng);
-                    }
-                  };
-                }
-                if (btnCoord) {
-                  btnCoord.onclick = function() {
-                    const coordText = `${lat}, ${lng}`;
-                    if (navigator.clipboard) {
-                      navigator.clipboard.writeText(coordText).then(() => {
-                        btnCoord.textContent = "Copied!";
-                        setTimeout(() => btnCoord.textContent = "Copy lat,lon", 1200);
-                      });
-                    } else {
-                      window.prompt("Copy coordinates:", coordText);
-                    }
-                  };
-                }
-              }, 100);
-            } else {
-              console.log('No nearest point found for click.'); // Debug
-            }
+            showTrajectoryPopupAt(file.name, latlngs, times, e.latlng);
           });
+          addMobileTrajectoryTouchTarget(poly);
           trajLayers.push(poly);
           trajSelected.push(true);
           trajTrackData.push({latlngs, times, color, name, elevations, fileName: file.name}); // Höhen speichern
@@ -1658,8 +2459,10 @@
             trajSelected[idx] = this.checked;
             if (this.checked) {
               trajLayers[idx].addTo(map);
+              trajLayers[idx]._mobileTouchTarget?.addTo(map);
             } else {
               map.removeLayer(trajLayers[idx]);
+              if (trajLayers[idx]._mobileTouchTarget) map.removeLayer(trajLayers[idx]._mobileTouchTarget);
             }
             updateAllHourAndTimeMarkers();
           });
@@ -1695,77 +2498,11 @@
             const poly = L.polyline(coords, {color: "#00bfff", weight: 5, opacity: 1, interactive: true});
             poly.addTo(map);
 
-            // Popup bei Klick auf Trajektorie (nur Koordinaten)
+            // Popup bei Klick auf Trajektorie mit interpolierten Koordinaten am Klickpunkt
             poly.on('click', function(e) {
-              console.log('KML polyline clicked:', e.latlng); // Debug
-              let minDist = Infinity, minIdx = -1;
-              for (let k = 0; k < coords.length; k++) {
-                const d = map.distance(e.latlng, L.latLng(coords[k]));
-                if (d < minDist) {
-                  minDist = d;
-                  minIdx = k;
-                }
-              }
-              if (minIdx >= 0) {
-                const lat = coords[minIdx][0].toFixed(6);
-                const lng = coords[minIdx][1].toFixed(6);
-                L.popup()
-                  .setLatLng(e.latlng)
-                  .setContent(
-                    `<b style="color:#00bfff;font-size:1.1em;">${file.name}</b><br>
-                    <b>Lat:</b> <span id="lat-val">${lat}</span>
-                    <button id="copy-lat-btn" style="margin-left:6px;padding:1px 8px;border-radius:6px;border:none;background:#333;color:#ffe066;cursor:pointer;">Copy</button><br>
-                    <b>Lon:</b> <span id="lon-val">${lng}</span>
-                    <button id="copy-lon-btn" style="margin-left:6px;padding:1px 8px;border-radius:6px;border:none;background:#333;color:#ffe066;cursor:pointer;">Copy</button><br>
-                    <button id="copy-coord-btn" style="margin-top:6px;padding:2px 10px;border-radius:6px;border:none;background:#333;color:#ffe066;cursor:pointer;">Copy lat,lon</button>`                  )
-                  .openOn(map);
-
-                setTimeout(() => {
-                  const btnLat = document.getElementById('copy-lat-btn');
-                  const btnLon = document.getElementById('copy-lon-btn');
-                  const btnCoord = document.getElementById('copy-coord-btn');
-                  if (btnLat) {
-                    btnLat.onclick = function() {
-                      if (navigator.clipboard) {
-                        navigator.clipboard.writeText(lat).then(() => {
-                          btnLat.textContent = "Copied!";
-                          setTimeout(() => btnLat.textContent = "Copy", 1200);
-                        });
-                      } else {
-                        window.prompt("Copy latitude:", lat);
-                      }
-                    };
-                  }
-                  if (btnLon) {
-                    btnLon.onclick = function() {
-                      if (navigator.clipboard) {
-                        navigator.clipboard.writeText(lng).then(() => {
-                          btnLon.textContent = "Copied!";
-                          setTimeout(() => btnLon.textContent = "Copy", 1200);
-                        });
-                      } else {
-                        window.prompt("Copy longitude:", lng);
-                      }
-                    };
-                  }
-                  if (btnCoord) {
-                    btnCoord.onclick = function() {
-                      const coordText = `${lat}, ${lng}`;
-                      if (navigator.clipboard) {
-                        navigator.clipboard.writeText(coordText).then(() => {
-                          btnCoord.textContent = "Copied!";
-                          setTimeout(() => btnCoord.textContent = "Copy lat,lon", 1200);
-                        });
-                      } else {
-                        window.prompt("Copy coordinates:", coordText);
-                      }
-                    };
-                  }
-                }, 100);
-              } else {
-                console.log('No nearest point found for KML click.'); // Debug
-              }
+              showTrajectoryPopupAt(file.name, coords, [], e.latlng);
             });
+            addMobileTrajectoryTouchTarget(poly);
 
             trajLayers.push(poly);
             trajSelected.push(true);
@@ -1788,8 +2525,10 @@
               trajSelected[idx] = this.checked;
               if (this.checked) {
                 trajLayers[idx].addTo(map);
+                trajLayers[idx]._mobileTouchTarget?.addTo(map);
               } else {
                 map.removeLayer(trajLayers[idx]);
+                if (trajLayers[idx]._mobileTouchTarget) map.removeLayer(trajLayers[idx]._mobileTouchTarget);
               }
               updateAllHourAndTimeMarkers();
             });
@@ -1825,6 +2564,7 @@
       // Entferne rückwärts
       toRemove.reverse().forEach(idx => {
         if (map.hasLayer(trajLayers[idx])) map.removeLayer(trajLayers[idx]);
+        if (trajLayers[idx]._mobileTouchTarget) map.removeLayer(trajLayers[idx]._mobileTouchTarget);
         trajLayers.splice(idx, 1);
         trajSelected.splice(idx, 1);
         trajTrackData.splice(idx, 1);
@@ -1930,6 +2670,31 @@
       iconEuSunMarkers = [];
     }
 
+    function setAllTrajectoryLayersVisible(isVisible) {
+      const layers = [
+        ...trajLayers,
+        ...trajLayers.map(layer => layer._mobileTouchTarget).filter(Boolean),
+        ...extrapolatedTrackLines,
+        ...extrapolatedHourMarkers,
+        ...extrapolatedSunMarkers,
+        ...iconEuSunMarkers,
+        ...iconEuTrajectoryMarkers
+      ];
+      if (iconEuTrajectoryLine) layers.push(iconEuTrajectoryLine);
+      customForecasts.forEach(forecast => {
+        if (forecast.layerGroup) layers.push(forecast.layerGroup);
+        layers.push(...(forecast.markers || []), ...(forecast.sunMarkers || []));
+      });
+
+      layers.filter(Boolean).forEach(layer => {
+        if (isVisible) {
+          if (!map.hasLayer(layer)) layer.addTo(map);
+        } else if (map.hasLayer(layer)) {
+          map.removeLayer(layer);
+        }
+      });
+    }
+
     function trimTrajectoryToMap(points) {
       if (!points.length) return [];
       const size = map.getSize();
@@ -1987,6 +2752,9 @@
         direction: "top",
         offset: [0, -6]
       });
+      marker.bindPopup(`<b>${isSunset ? "Sunset" : "Sunrise"}</b><br>${timeText}<br><b>Lat:</b> ${point.lat.toFixed(6)}<br><b>Lon:</b> ${point.lon.toFixed(6)}`);
+      marker.on('click', event => marker.openPopup(event.latlng));
+      marker.bringToFront();
       iconEuSunMarkers.push(marker);
     }
 
@@ -2077,9 +2845,47 @@
       markerCollection.push(marker);
     }
 
+    function addTrajectoryStartEndAltitudeMarkers(points, altitudeText, color, markerCollection) {
+      if (!Array.isArray(points) || points.length === 0) return;
+
+      const getDelayedStartPoint = (trajectoryPoints, delayMinutes) => {
+        const first = trajectoryPoints[0];
+        const firstTime = new Date(first.time).getTime();
+        if (!Number.isFinite(firstTime)) return trajectoryPoints[0];
+
+        const targetTime = firstTime + delayMinutes * 60 * 1000;
+        for (let i = 1; i < trajectoryPoints.length; i++) {
+          const previous = trajectoryPoints[i - 1];
+          const current = trajectoryPoints[i];
+          const previousTime = new Date(previous.time).getTime();
+          const currentTime = new Date(current.time).getTime();
+          if (!Number.isFinite(previousTime) || !Number.isFinite(currentTime)) continue;
+          if (targetTime <= previousTime) return previous;
+          if (targetTime <= currentTime) {
+            return interpolateTrajectoryPoint(previous, current, targetTime);
+          }
+        }
+        return trajectoryPoints[trajectoryPoints.length - 1];
+      };
+
+      const delayedStartPoint = getDelayedStartPoint(points, 15);
+      if (delayedStartPoint) {
+        addTrajectoryAltitudeMarker(delayedStartPoint, altitudeText, color, markerCollection, -1);
+      }
+
+      if (points.length > 1) {
+        const endPoint = points[points.length - 1];
+        if (delayedStartPoint) {
+          const startLatLng = L.latLng(delayedStartPoint.lat, delayedStartPoint.lon);
+          const endLatLng = L.latLng(endPoint.lat, endPoint.lon);
+          if (map.distance(startLatLng, endLatLng) < 5) return;
+        }
+        addTrajectoryAltitudeMarker(endPoint, altitudeText, color, markerCollection, 1);
+      }
+    }
+
     function updateIconEuTrajectory(forceFetch = true) {
       clearIconEuTrajectory();
-      if (!showCalculatedForecastTrajectories) return;
       if (!showIconEuForecast) return;
       if (!forceFetch && Array.isArray(cachedIconEuPoints)) {
         renderIconEuTrajectory(cachedIconEuPoints);
@@ -2114,8 +2920,9 @@
         .then(data => {
           if (!Array.isArray(data.points) || data.points.length < 2) return;
           cachedIconEuPoints = data.points;
-          liveForecastSource = { model: data.model || liveForecastModel, fetchedAt: data.source_fetched_at || null, forecastValidFrom: data.forecast_valid_from || null, modelRun: data.model_run_time || null };
+          liveForecastSource = { model: data.model || liveForecastModel, fetchedAt: data.source_fetched_at || null, forecastValidFrom: data.forecast_valid_from || null, modelRun: data.model_run_time || null, pressure: data.pressure ?? null, pressureLevels: data.pressure_levels || null };
           renderIconEuTrajectory(cachedIconEuPoints);
+          if (!allTrajectoriesVisible) setAllTrajectoryLayersVisible(false);
         })
         .catch(error => console.warn("ICON-EU-Trajektorie nicht verfügbar:", error));
     }
@@ -2123,6 +2930,7 @@
     function renderIconEuTrajectory(points) {
           const visiblePoints = points;
           if (visiblePoints.length < 2) return;
+          const liveSeries = trajectorySeriesFromPoints(visiblePoints);
 
           let segmentPoints = [visiblePoints[0]];
           let segmentIsDaylight = solarElevation(new Date(visiblePoints[0].time), visiblePoints[0].lat, visiblePoints[0].lon) >= 0;
@@ -2133,7 +2941,7 @@
               const transition = findSolarTransitionPoint(visiblePoints[index - 1], point);
               addIconEuSunMarker(transition.point, transition.isSunset);
               const line = L.polyline(segmentPoints.concat(transition.point).map(item => [item.lat, item.lon]), {
-                color: segmentIsDaylight ? "#00e5ff" : "#0b3d5c",
+                color: segmentIsDaylight ? "#ffffff" : "#000000",
                 weight: 5,
                 opacity: 1,
                 dashArray: "2 6",
@@ -2142,8 +2950,27 @@
                 direction: "top",
                 sticky: true
               }).addTo(map);
+              line.on('click', event => {
+                showTrajectoryPopupAt(
+                  'Live forecast trajectory',
+                  liveSeries.latlngs,
+                  liveSeries.times,
+                  event.latlng,
+                  liveForecastLineTooltip(liveForecastNextRefresh, liveForecastSource),
+                  liveForecastSource
+                );
+              });
+              line.bringToFront();
+              const lineTouchTarget = L.polyline(line.getLatLngs(), {
+                color: "#000",
+                weight: 28,
+                opacity: 0.01,
+                interactive: true
+              }).addTo(map);
+              lineTouchTarget.on('click', event => line.fire('click', event));
               iconEuTrajectoryLine = iconEuTrajectoryLine || L.layerGroup().addTo(map);
               iconEuTrajectoryLine.addLayer(line);
+              iconEuTrajectoryLine.addLayer(lineTouchTarget);
               segmentPoints = [transition.point, point];
               segmentIsDaylight = isDaylight;
             } else {
@@ -2151,7 +2978,7 @@
             }
           }
           const finalLine = L.polyline(segmentPoints.map(point => [point.lat, point.lon]), {
-            color: segmentIsDaylight ? "#00e5ff" : "#0b3d5c",
+            color: segmentIsDaylight ? "#ffffff" : "#000000",
             weight: 5,
             opacity: 1,
             dashArray: "2 6",
@@ -2160,16 +2987,38 @@
             direction: "top",
             sticky: true
           }).addTo(map);
+          finalLine.on('click', event => {
+            showTrajectoryPopupAt(
+              'Live forecast trajectory',
+              liveSeries.latlngs,
+              liveSeries.times,
+              event.latlng,
+              liveForecastLineTooltip(liveForecastNextRefresh, liveForecastSource),
+              liveForecastSource
+            );
+          });
+          finalLine.bringToFront();
+          const finalLineTouchTarget = L.polyline(finalLine.getLatLngs(), {
+            color: "#000",
+            weight: 28,
+            opacity: 0.01,
+            interactive: true
+          }).addTo(map);
+          finalLineTouchTarget.on('click', event => finalLine.fire('click', event));
           iconEuTrajectoryLine = iconEuTrajectoryLine || L.layerGroup().addTo(map);
           iconEuTrajectoryLine.addLayer(finalLine);
+          iconEuTrajectoryLine.addLayer(finalLineTouchTarget);
+          iconEuSunMarkers.forEach(markerLayer => markerLayer.bringToFront());
 
           getFullHourPoints(visiblePoints).forEach(point => {
-            addTrajectoryHourMarker(point, "#00e5ff", iconEuTrajectoryMarkers);
+            addTrajectoryHourMarker(point, "#ffffff", iconEuTrajectoryMarkers);
           });
-          visiblePoints.forEach((point, pointIndex) => {
-            if (pointIndex === 0 || pointIndex % 18 !== 9) return;
-            addTrajectoryAltitudeMarker(point, `${Math.round(getLiveBarometricAltitudeFeet()).toLocaleString("en-US")} ft`, "#00e5ff", iconEuTrajectoryMarkers, pointIndex % 36 === 9 ? 1 : -1);
-          });
+          addTrajectoryStartEndAltitudeMarkers(
+            visiblePoints,
+            `${Math.round(getLiveBarometricAltitudeFeet()).toLocaleString("en-US")} ft`,
+            "#ffffff",
+            iconEuTrajectoryMarkers
+          );
     }
 
     function clearCustomForecast(forecast) {
@@ -2181,6 +3030,16 @@
       forecast.markers = [];
       (forecast.sunMarkers || []).forEach(markerLayer => map.removeLayer(markerLayer));
       forecast.sunMarkers = [];
+    }
+
+    function addMobileForecastTouchTarget(line, layerGroup) {
+      const touchTarget = L.polyline(line.getLatLngs(), {
+        color: '#000',
+        weight: 28,
+        opacity: 0.01,
+        interactive: true
+      }).addTo(layerGroup);
+      touchTarget.on('click', event => line.fire('click', event));
     }
 
     function readCustomForecastSettings() {
@@ -2288,8 +3147,8 @@
 
     function renderCustomForecast(forecast) {
       clearCustomForecast(forecast);
-      if (!showCalculatedForecastTrajectories) return;
       if (!forecast.enabled || !Array.isArray(forecast.points) || forecast.points.length < 2) return;
+      const forecastSeries = trajectorySeriesFromPoints(forecast.points);
 
       forecast.layerGroup = L.layerGroup().addTo(map);
       let segmentPoints = [forecast.points[0]];
@@ -2302,7 +3161,7 @@
         const point = forecast.points[pointIndex];
         const isDaylight = solarElevation(new Date(point.time), point.lat, point.lon) >= 0;
         if (isDaylight !== segmentIsDaylight) {
-          L.polyline(segmentPoints.concat(point).map(item => [item.lat, item.lon]), {
+          const forecastLine = L.polyline(segmentPoints.concat(point).map(item => [item.lat, item.lon]), {
             color: forecast.color,
             weight: 5,
             opacity: 1,
@@ -2311,14 +3170,25 @@
               }).bindTooltip(forecastLineTooltip(forecast.altitude, customForecastNextRefresh[forecast.index], forecast.source), {
             direction: "top",
             sticky: true
-          }).addTo(forecast.layerGroup);
+              }).addTo(forecast.layerGroup);
+              forecastLine.on('click', event => {
+                showTrajectoryPopupAt(
+                  'Forecast trajectory',
+                  forecastSeries.latlngs,
+                  forecastSeries.times,
+                  event.latlng,
+                  forecastLineTooltip(forecast.altitude, customForecastNextRefresh[forecast.index], forecast.source),
+                  forecast.source
+                );
+              });
+              addMobileForecastTouchTarget(forecastLine, forecast.layerGroup);
           segmentPoints = [point];
           segmentIsDaylight = isDaylight;
         } else {
           segmentPoints.push(point);
         }
       }
-      L.polyline(segmentPoints.map(point => [point.lat, point.lon]), {
+      const finalForecastLine = L.polyline(segmentPoints.map(point => [point.lat, point.lon]), {
         color: forecast.color,
         weight: 5,
         opacity: 1,
@@ -2328,14 +3198,26 @@
         direction: "top",
         sticky: true
       }).addTo(forecast.layerGroup);
+      finalForecastLine.on('click', event => {
+        showTrajectoryPopupAt(
+          'Forecast trajectory',
+          forecastSeries.latlngs,
+          forecastSeries.times,
+          event.latlng,
+          forecastLineTooltip(forecast.altitude, customForecastNextRefresh[forecast.index], forecast.source),
+          forecast.source
+        );
+      });
+      addMobileForecastTouchTarget(finalForecastLine, forecast.layerGroup);
       getFullHourPoints(forecast.points).forEach(point => {
         addTrajectoryHourMarker(point, forecast.color, forecast.markers);
       });
-      forecast.points.forEach((point, pointIndex) => {
-        if (pointIndex === 0 || pointIndex % 18 !== 9) return;
-        const altitudeText = `${Math.round(forecast.altitude).toLocaleString("en-US")} ft`;
-        addTrajectoryAltitudeMarker(point, altitudeText, forecast.color, forecast.markers, pointIndex % 36 === 9 ? 1 : -1);
-      });
+      addTrajectoryStartEndAltitudeMarkers(
+        forecast.points,
+        `${Math.round(forecast.altitude).toLocaleString("en-US")} ft`,
+        forecast.color,
+        forecast.markers
+      );
 
       let previousDaylight = solarElevation(
         new Date(forecast.points[0].time),
@@ -2363,6 +3245,9 @@
           direction: "top",
           offset: [0, -6]
         });
+        sunMarker.bindPopup(`<b>${daylight ? "Sunrise" : "Sunset"}</b><br>${timeText}<br><b>Lat:</b> ${transition.point.lat.toFixed(6)}<br><b>Lon:</b> ${transition.point.lon.toFixed(6)}`);
+        sunMarker.on('click', event => sunMarker.openPopup(event.latlng));
+        sunMarker.bringToFront();
         forecast.sunMarkers.push(sunMarker);
         previousDaylight = daylight;
       }
@@ -2373,7 +3258,6 @@
     }
 
     function updateCustomForecasts(forceManual = false) {
-      if (!showCalculatedForecastTrajectories) return;
       if (!lastKnownGpsData) return;
       saveCustomForecastSettings();
       readCustomForecastSettings();
@@ -2400,7 +3284,7 @@
         });
         return fetchWithParentFallback(`icon_eu_trajectory.php?${params}`)
           .then(response => response.json())
-          .then(data => Array.isArray(data.points) ? { points: data.points, source: { model: data.model || forecast.model, fetchedAt: data.source_fetched_at || null, forecastValidFrom: data.forecast_valid_from || null, modelRun: data.model_run_time || null } } : null)
+          .then(data => Array.isArray(data.points) ? { points: data.points, source: { model: data.model || forecast.model, fetchedAt: data.source_fetched_at || null, forecastValidFrom: data.forecast_valid_from || null, modelRun: data.model_run_time || null, pressure: data.pressure ?? null, pressureLevels: data.pressure_levels || null } } : null)
           .catch(error => {
             console.warn(`Forecast at ${forecast.altitude} ft unavailable:`, error);
             return null;
@@ -2415,6 +3299,7 @@
           }
         });
         renderAllCustomForecasts();
+        if (!allTrajectoriesVisible) setAllTrajectoryLayersVisible(false);
       });
     }
 
@@ -2544,6 +3429,10 @@
     loadLinearForecastDuration();
     loadLiveForecastModel();
     loadLiveForecastAutoRefresh();
+    document.querySelectorAll('.custom-forecast-auto').forEach(input => {
+      const label = input.closest('label');
+      if (label && label.lastChild) label.lastChild.textContent = ' Auto refresh';
+    });
     updateForecastRefreshLabels();
     setInterval(updateForecastRefreshLabels, 1000);
 
@@ -2623,7 +3512,7 @@
         weight: 5,
         opacity: 1,
         dashArray: "8 7",
-        interactive: false,
+        interactive: true,
         pane: "shadowPane"
       }).addTo(map);
       extrapolatedTrackLines.push(line);
@@ -2648,6 +3537,9 @@
         offset: [0, -6],
         className: "sun-transition-label"
       });
+      marker.bindPopup(`<b>${isSunset ? "Sunset" : "Sunrise"}</b><br>${timeText} UTC<br><b>Lat:</b> ${position.lat.toFixed(6)}<br><b>Lon:</b> ${position.lng.toFixed(6)}`);
+      marker.on('click', event => marker.openPopup(event.latlng));
+      marker.bringToFront();
       extrapolatedSunMarkers.push(marker);
     }
 
@@ -2736,7 +3628,6 @@
 
     function saveLinearForecastDuration() {
       const input = document.getElementById('menu-linear-forecast-duration');
-      if (!input) return;
       linearForecastDuration = Math.max(1, Math.min(48, Number(input.value) || 24));
       input.value = linearForecastDuration;
       localStorage.setItem('mapLinearForecastDuration', String(linearForecastDuration));
@@ -2746,8 +3637,7 @@
     function loadLinearForecastDuration() {
       const saved = Number(localStorage.getItem('mapLinearForecastDuration'));
       if (Number.isFinite(saved) && saved >= 1 && saved <= 48) linearForecastDuration = saved;
-      const menuInput = document.getElementById('menu-linear-forecast-duration');
-      if (menuInput) menuInput.value = linearForecastDuration;
+      document.getElementById('menu-linear-forecast-duration').value = linearForecastDuration;
     }
 
     function centerOnGps() {
@@ -2939,8 +3829,9 @@
       data.vario = parseFloat(data.vario || "0");
       data.temp = data.temp !== undefined ? parseFloat(data.temp) : undefined;
       data.humidity = data.humidity !== undefined ? parseFloat(data.rh) : undefined;
+      const liveTime = data.gps_time || data.time || data.datetime || data.date;
       return {
-        zeit: data.gps_time || "--:--:--",
+        zeit: liveTime || "--:--:--",
         qnh: data.qnh || "----",
         hoehe_ft: data.alt_ft || "",
         hoehe_m: data.alt_m || "",
@@ -2957,6 +3848,21 @@
         gps_lng: data.gps_lng,
         ballast_drop: data.ballast_drop || "--"
       };
+    }
+
+    function fetchLiveText() {
+      const liveSources = ['wuzi_data.txt', 'wuzi.txt'];
+      let lastError = null;
+      return liveSources.reduce((chain, source) => {
+        return chain.catch(() => {
+          const cacheBust = Date.now();
+          return fetch(`${source}?_=${cacheBust}`, { cache: 'no-store' })
+            .then(r => {
+              if (!r.ok) throw new Error(`Live source ${source} HTTP ${r.status}`);
+              return r.text();
+            });
+        });
+      }, Promise.reject(lastError));
     }
 
     function hasValidGpsFix(data) {
@@ -3030,6 +3936,7 @@
       data.gps_course = lastKnownCourse;
       data.gps_speed = lastKnownSpeed;
       lastKnownGpsData = data;
+      applyMobileReloadView();
       const barometricAltitudeFeet = getLiveBarometricAltitudeFeet();
       updateExtrapolatedTrack();
       if (lastIconEuRequest === 0) {
@@ -3043,17 +3950,19 @@
 
       document.getElementById('compass-alt').textContent = data.hoehe_ft || '--';
       document.getElementById('compass-speed').textContent = data.gps_speed || '--';
-      const varioValue = Number(data.vario);
-      document.getElementById('compass-vario').textContent = Number.isFinite(varioValue) ? varioValue.toFixed(1) : '--';
+      document.getElementById('compass-track').textContent = data.gps_course || '--';
+      document.getElementById('mobile-track-degree').textContent = data.gps_course || '--';
 
       let course = parseFloat(data.gps_course);
       if (!isNaN(course)) {
         document.getElementById('compass-arrow').style.transform =
           `translateX(-50%) rotate(${course}deg)`;
         document.getElementById('compass-degree').textContent = `${Math.round(course)}°`;
+        document.getElementById('mobile-track-arrow').style.transform = `rotate(${course}deg)`;
       } else {
         document.getElementById('compass-arrow').style.transform = `translateX(-50%) rotate(0deg)`;
         document.getElementById('compass-degree').textContent = `0°`;
+        document.getElementById('mobile-track-arrow').style.transform = 'rotate(0deg)';
       }
 
       let popupText = `
@@ -3070,8 +3979,7 @@
 
       if (!marker) {
         marker = L.marker([data.gps_lat, data.gps_lng]).addTo(map)
-          .bindPopup(popupText, { maxWidth: 400, minWidth: 260, autoPan: true })
-          .openPopup();
+          .bindPopup(popupText, { maxWidth: 400, minWidth: 260, autoPan: true });
       } else {
         marker.setLatLng([data.gps_lat, data.gps_lng])
           .setPopupContent(popupText);
@@ -3104,8 +4012,7 @@
     }
 
     function fetchAndUpdate() {
-      fetch('wuzi_data.txt')
-        .then(r => r.text())
+      fetchLiveText()
         .then(text => {
           const data = parseTextData(text);
           if (hasValidGpsFix(data)) {
@@ -3223,7 +4130,7 @@
       }
     });
 
-    map.on('mousedown', function(e) {
+    map.on('mousedown touchstart', function(e) {
       if (!drawCircleMode) return;
       if (tempCircle) { map.removeLayer(tempCircle); tempCircle = null; }
       circleStartLatLng = e.latlng;
@@ -3240,7 +4147,7 @@
       }).addTo(map);
     });
 
-    map.on('mousemove', function(e) {
+    map.on('mousemove touchmove', function(e) {
       if (!drawCircleMode || !circleStartLatLng) return;
       const radius = map.distance(circleStartLatLng, e.latlng);
       if (tempCircle) tempCircle.setRadius(radius);
@@ -3277,7 +4184,7 @@
       }
     });
 
-    map.on('mouseup', function(e) {
+    map.on('mouseup touchend', function(e) {
       if (!drawCircleMode || !circleStartLatLng) return;
       map.dragging.enable();
       circleStartLatLng = null;
@@ -3306,6 +4213,8 @@
         circle: lastCircleData,
         trackRangeFrom: document.getElementById('track-from-datetime').value,
         trackRangeTo: document.getElementById('track-to-datetime').value,
+        trackRangePresetHours: trackRangePreset.value,
+        trackRangeLive: trackToLiveCheckbox.checked,
         mapZoom: map.getZoom(),
         mapCenter: map.getCenter(),
         trajData: trajData
@@ -3320,6 +4229,7 @@
     trackFromInput.addEventListener('change', saveMapSettingsLocally);
     trackToInput.addEventListener('change', saveMapSettingsLocally);
     trackToLiveCheckbox.addEventListener('change', saveMapSettingsLocally);
+    trackRangePreset.addEventListener('change', saveMapSettingsLocally);
     const menuLinearForecastCheckbox = document.getElementById('menu-linear-forecast-checkbox');
     const savedLinearForecast = localStorage.getItem('showLinearForecast');
     if (savedLinearForecast !== null) menuLinearForecastCheckbox.checked = savedLinearForecast === 'true';
@@ -3346,7 +4256,9 @@
         clearIconEuTrajectory();
       }
     });
-    document.getElementById('menu-linear-forecast-duration').addEventListener('change', saveLinearForecastDuration);
+    document.getElementById('menu-linear-forecast-duration').addEventListener('change', function() {
+      saveLinearForecastDuration();
+    });
 
     // Export-Funktion
     document.getElementById('export-settings-btn').addEventListener('click', function() {
@@ -3416,6 +4328,13 @@
           loadedFileNames = [];
 
           // Track-Zeitraum
+          if (data.trackRangePresetHours && ['set-time', '3', '6', '12', '18', '24', '48'].includes(String(data.trackRangePresetHours))) {
+            trackRangePreset.value = String(data.trackRangePresetHours);
+          }
+          if (typeof data.trackRangeLive === 'boolean') {
+            trackToLiveCheckbox.checked = data.trackRangeLive;
+          }
+
           if (data.trackRangeFrom && data.trackRangeTo) {
             const importedFromUtc = normalizeAnyDateTimeToUtcInput(data.trackRangeFrom);
             const importedToUtc = normalizeAnyDateTimeToUtcInput(data.trackRangeTo);
@@ -3423,6 +4342,7 @@
               document.getElementById('track-from-datetime').value = importedFromUtc;
               document.getElementById('track-to-datetime').value = importedToUtc;
             }
+            updateTrackRangeFieldsFromPreset(false);
             loadTrackFromDb(false);
           } else if (data.trackTime) {
             const fallbackHours = parseInt(data.trackTime, 10) || 6;
@@ -3430,7 +4350,10 @@
             const fallbackFrom = new Date(fallbackTo.getTime() - fallbackHours * 60 * 60 * 1000);
             document.getElementById('track-from-datetime').value = formatDateTimeUtcInput(fallbackFrom);
             document.getElementById('track-to-datetime').value = formatDateTimeUtcInput(fallbackTo);
+            updateTrackRangeFieldsFromPreset(false);
             loadTrackFromDb(false);
+          } else {
+            updateTrackRangeFieldsFromPreset(false);
           }
           // Kreis
           if (data.circle && typeof data.circle.lat === "number" && typeof data.circle.lng === "number" && typeof data.circle.radius === "number") {
@@ -3463,111 +4386,11 @@
               const poly = L.polyline(track.latlngs, {color: track.color || "#00bfff", weight: 5, opacity: 1, interactive: true});
               poly.addTo(map);
 
-              // Popup-Logik hinzufügen (wie in handleGpx)
+              // Popup mit interpolierter UTC/Koordinaten am Klickpunkt
               poly.on('click', function(e) {
-                let minDist = Infinity, minIdx = -1;
-                for (let i = 0; i < track.latlngs.length; i++) {
-                  const d = map.distance(e.latlng, L.latLng(track.latlngs[i]));
-                  if (d < minDist) {
-                    minDist = d;
-                    minIdx = i;
-                  }
-                }
-                if (minIdx >= 0) {
-                  const t = track.times && track.times[minIdx] ? new Date(track.times[minIdx]) : null;
-                  const utc = t ? t.toISOString().replace('T', ' ').replace(/\..+/, '') + " UTC" : "--";
-                  const lat = track.latlngs[minIdx][0].toFixed(6);
-                  const lng = track.latlngs[minIdx][1].toFixed(6);
-
-                  let speed = "--", dir = "--";
-                  if (minIdx > 0 && track.times && track.times[minIdx] && track.times[minIdx-1]) {
-                    const distMeters = map.distance(L.latLng(track.latlngs[minIdx-1]), L.latLng(track.latlngs[minIdx]));
-                    const dt = (new Date(track.times[minIdx]) - new Date(track.times[minIdx-1])) / 1000;
-                    if (dt > 0) {
-                      speed = ((distMeters / dt) * 1.94384).toFixed(1);
-                    }
-                    const dy = track.latlngs[minIdx][0] - track.latlngs[minIdx-1][0];
-                    const dx = track.latlngs[minIdx][1] - track.latlngs[minIdx-1][1];
-                    dir = Math.atan2(dx, dy) * 180 / Math.PI;
-                    dir = (dir + 360) % 360;
-                    dir = dir.toFixed(0) + "°";
-                  }
-
-                  let sinceStart = "--";
-                  if (track.times && track.times[minIdx] && track.times[0]) {
-                    const diffSec = Math.round((new Date(track.times[minIdx]) - new Date(track.times[0])) / 1000);
-                    const h = Math.floor(diffSec / 3600);
-                    const m = Math.floor((diffSec % 3600) / 60);
-                    const s = diffSec % 60;
-                    if (h > 0) {
-                      sinceStart = `${h} h ${m} min`;
-                    } else if (m > 0) {
-                      sinceStart = `${m} min ${s} s`;
-                    } else {
-                      sinceStart = `${s} s`;
-                    }
-                  }
-
-                  L.popup()
-                    .setLatLng(e.latlng)
-                    .setContent(
-                      `<b style="color:#00bfff;font-size:1.1em;">${track.name || "Track"}</b><br>
-                      <b>UTC:</b> ${utc}<br>
-                      <b>Since start:</b> ${sinceStart}<br>
-                      <b>Speed:</b> ${speed} kt<br>
-                      <b>Direction:</b> ${dir}<br>
-                      <b>Lat:</b> <span id="lat-val">${lat}</span>
-                      <button id="copy-lat-btn" style="margin-left:6px;padding:1px 8px;border-radius:6px;border:none;background:#333;color:#ffe066;cursor:pointer;">Copy</button><br>
-                      <b>Lon:</b> <span id="lon-val">${lng}</span>
-                      <button id="copy-lon-btn" style="margin-left:6px;padding:1px 8px;border-radius:6px;border:none;background:#333;color:#ffe066;cursor:pointer;">Copy</button><br>
-                      <button id="copy-coord-btn" style="margin-top:6px;padding:2px 10px;border-radius:6px;border:none;background:#333;color:#ffe066;cursor:pointer;">Copy lat,lon</button>`
-                    )
-                    .openOn(map);
-
-                  setTimeout(() => {
-                    const btnLat = document.getElementById('copy-lat-btn');
-                    const btnLon = document.getElementById('copy-lon-btn');
-                    const btnCoord = document.getElementById('copy-coord-btn');
-                    if (btnLat) {
-                      btnLat.onclick = function() {
-                        if (navigator.clipboard) {
-                          navigator.clipboard.writeText(lat).then(() => {
-                            btnLat.textContent = "Copied!";
-                            setTimeout(() => btnLat.textContent = "Copy", 1200);
-                          });
-                        } else {
-                          window.prompt("Copy latitude:", lat);
-                        }
-                      };
-                    }
-                    if (btnLon) {
-                      btnLon.onclick = function() {
-                        if (navigator.clipboard) {
-                          navigator.clipboard.writeText(lng).then(() => {
-                            btnLon.textContent = "Copied!";
-                            setTimeout(() => btnLon.textContent = "Copy", 1200);
-                          });
-                        } else {
-                          window.prompt("Copy longitude:", lng);
-                        }
-                      };
-                    }
-                    if (btnCoord) {
-                      btnCoord.onclick = function() {
-                        const coordText = `${lat}, ${lng}`;
-                        if (navigator.clipboard) {
-                          navigator.clipboard.writeText(coordText).then(() => {
-                            btnCoord.textContent = "Copied!";
-                            setTimeout(() => btnCoord.textContent = "Copy lat,lon", 1200);
-                          });
-                        } else {
-                          window.prompt("Copy coordinates:", coordText);
-                        }
-                      };
-                    }
-                  }, 100);
-                }
+                showTrajectoryPopupAt(track.name || "Track", track.latlngs, track.times || [], e.latlng);
               });
+              addMobileTrajectoryTouchTarget(poly);
 
               trajLayers.push(poly);
               trajSelected.push(true);
@@ -3602,8 +4425,10 @@
                 trajSelected[idx] = this.checked;
                 if (this.checked) {
                   trajLayers[idx].addTo(map);
+                  trajLayers[idx]._mobileTouchTarget?.addTo(map);
                 } else {
                   map.removeLayer(trajLayers[idx]);
+                  if (trajLayers[idx]._mobileTouchTarget) map.removeLayer(trajLayers[idx]._mobileTouchTarget);
                 }
                 updateAllHourAndTimeMarkers();
               });
@@ -3611,10 +4436,7 @@
             });
             updateAllHourAndTimeMarkers();
           }
-          // Map-Zoom und Center (jetzt sicher am Ende!)
-          if (data.mapZoom && data.mapCenter) {
-            map.setView([data.mapCenter.lat, data.mapCenter.lng], data.mapZoom);
-          }
+          // Mobile reload view stays centered on the current GPS position.
           // Dateinamen nur anzeigen (nicht mehr automatisch laden!)
           if (Array.isArray(data.loadedFiles) && data.loadedFiles.length > 0) {
             loadedFileNames = data.loadedFiles;
@@ -3632,6 +4454,9 @@
         });
     });
 
+    // Start mobile views at approximately 50 km scale after every reload.
+    setTimeout(applyMobileReloadView, 0);
+
     // --- NEU: Bodenhöhe beim Rechtsklick anzeigen ---
     map.on('contextmenu', function(e) {
       e.originalEvent.preventDefault(); // Standard-Kontextmenü verhindern
@@ -3648,6 +4473,58 @@
     document.getElementById('traj-toggle-btn').addEventListener('click', function() {
       const menu = document.getElementById('trajektorie-controls');
       menu.classList.toggle('collapsed');
+      localStorage.setItem('mobileTrajectoriesCollapsed', String(menu.classList.contains('collapsed')));
+    });
+
+    // On mobile, keep the map clear and expose both settings panels in one drawer.
+    const mobileSettingsButton = document.getElementById('mobile-settings-btn');
+    const mobileSettingsClose = document.getElementById('mobile-settings-close');
+    const mobileSettingsBackdrop = document.getElementById('mobile-settings-backdrop');
+    const mobileSettingsDrawer = document.getElementById('mobile-settings-drawer');
+    const mobileMapSettings = document.getElementById('mobile-map-settings');
+    const mobileMapSettingsToggle = document.getElementById('mobile-map-settings-toggle');
+    const mobileSettingsPanels = [
+      document.getElementById('track-time-label'),
+      document.getElementById('trajektorie-controls')
+    ];
+
+    const mobileLayerControl = document.querySelector('.leaflet-control-layers');
+    if (mobileLayerControl) {
+      mobileLayerControl.classList.add('leaflet-control-layers-expanded');
+      mobileMapSettings.appendChild(mobileLayerControl);
+    }
+    mobileSettingsPanels.forEach(panel => mobileSettingsDrawer.appendChild(panel));
+
+    const trajectoriesCollapsed = localStorage.getItem('mobileTrajectoriesCollapsed') === 'true';
+    const trackRangeCollapsed = localStorage.getItem('mobileTrackRangeCollapsed') === 'true';
+    const trajectoriesPanel = document.getElementById('trajektorie-controls');
+    const trackRangePanel = document.getElementById('track-time-label');
+    trajectoriesPanel.classList.toggle('collapsed', trajectoriesCollapsed);
+    trackRangePanel.classList.toggle('collapsed', trackRangeCollapsed);
+    trackTimeToggle.setAttribute('aria-expanded', String(!trackRangeCollapsed));
+
+    const mapSettingsCollapsed = localStorage.getItem('mobileMapSettingsCollapsed') === 'true';
+    mobileMapSettings.classList.toggle('collapsed', mapSettingsCollapsed);
+    mobileMapSettingsToggle.setAttribute('aria-expanded', String(!mapSettingsCollapsed));
+    mobileMapSettingsToggle.addEventListener('click', () => {
+      const isCollapsed = mobileMapSettings.classList.toggle('collapsed');
+      mobileMapSettingsToggle.setAttribute('aria-expanded', String(!isCollapsed));
+      localStorage.setItem('mobileMapSettingsCollapsed', String(isCollapsed));
+    });
+
+    function setMobileSettingsOpen(isOpen) {
+      document.body.classList.toggle('mobile-settings-open', isOpen);
+      mobileSettingsButton.setAttribute('aria-expanded', String(isOpen));
+      mobileSettingsDrawer.setAttribute('aria-hidden', String(!isOpen));
+      if (isOpen) mobileSettingsClose.focus();
+      else mobileSettingsButton.focus();
+    }
+
+    mobileSettingsButton.addEventListener('click', () => setMobileSettingsOpen(true));
+    mobileSettingsClose.addEventListener('click', () => setMobileSettingsOpen(false));
+    mobileSettingsBackdrop.addEventListener('click', () => setMobileSettingsOpen(false));
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') setMobileSettingsOpen(false);
     });
   </script>
 </body>

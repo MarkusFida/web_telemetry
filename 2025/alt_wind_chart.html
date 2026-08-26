@@ -45,6 +45,29 @@
     .sort-controls button.active { background: #ffe066; color: #222; font-weight: bold; }
     .refresh-btn { margin-left: 16px; background: #ffe066; color: #222; border: none; border-radius: 6px; padding: 4px 12px; font-size: 1em; font-weight: bold; cursor: pointer; }
     a.gps-link { color: #00eaff; text-decoration: underline; }
+    .quick-actions {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    .quick-btn {
+      background: #2f2f2f;
+      color: #ffe066;
+      border: 1px solid #4b4b4b;
+      border-radius: 2px;
+      padding: 6px 11px;
+      font-size: 0.95em;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: inset 0 0 0 1px #262626;
+      transition: background 0.15s ease;
+    }
+    .quick-btn:hover {
+      background: #3a3a3a;
+    }
     tbody tr { border-bottom: 1.5px solid #444; }
     tbody tr:last-child { border-bottom: none; }
     @media (max-width: 900px) {
@@ -75,6 +98,13 @@
     <a href="csv.html" target="_blank" style="color:#ffe066;font-size:1.3em;text-decoration:none;background:#333;padding:6px 18px;border-radius:8px;">csv chart</a>
   </div>
   <h1>Track Profile by Altitude</h1>
+  <div class="quick-actions">
+    <button type="button" class="quick-btn" id="copyLatLngBtn">act. Lat/Long copy</button>
+    <button type="button" class="quick-btn" id="copyLatBtn">Lat copy</button>
+    <button type="button" class="quick-btn" id="copyLngBtn">Long copy</button>
+    <button type="button" class="quick-btn" id="downloadKmlBtn">24h KML file</button>
+    <button type="button" class="quick-btn" id="downloadCsvBtn">DB to CSV</button>
+  </div>
   <div style="text-align:center; color:#ffe066; margin-top:10px; font-size:1.1em;">
     Last update (UTC): <span id="lastUpdate">--:--:--</span>
   </div>
@@ -162,6 +192,165 @@
     let sortAsc = true;
     let altStep = 50;
     let hoursBack = 12;
+    let latestLat = null;
+    let latestLon = null;
+
+    function setLatestCoordinatesFromRows(rows) {
+      let bestAge = Infinity;
+      let bestLat = null;
+      let bestLon = null;
+
+      rows.forEach(row => {
+        const lat = Number(row.lat);
+        const lon = Number(row.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+        const dateStr = row.gps_time || row.ts;
+        const ageMin = getAgeMinutes(dateStr);
+        if (ageMin !== null && ageMin < bestAge) {
+          bestAge = ageMin;
+          bestLat = lat;
+          bestLon = lon;
+        }
+      });
+
+      latestLat = bestLat;
+      latestLon = bestLon;
+    }
+
+    function copyText(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+      }
+      return Promise.reject(new Error('clipboard unavailable'));
+    }
+
+    function flashButtonText(btn, okText, originalText) {
+      btn.textContent = okText;
+      setTimeout(() => {
+        btn.textContent = originalText;
+      }, 1200);
+    }
+
+    function copyLatestCoordinates(mode, btn) {
+      if (!Number.isFinite(latestLat) || !Number.isFinite(latestLon)) {
+        alert('No current coordinates available yet.');
+        return;
+      }
+
+      const latText = latestLat.toFixed(6);
+      const lonText = latestLon.toFixed(6);
+      let value = `${latText}, ${lonText}`;
+      let okText = 'copy done!';
+      const originalText = btn.textContent;
+
+      if (mode === 'lat') {
+        value = latText;
+        okText = 'Lat copied';
+      } else if (mode === 'lon') {
+        value = lonText;
+        okText = 'Long copied';
+      }
+
+      copyText(value)
+        .then(() => flashButtonText(btn, okText, originalText))
+        .catch(() => {
+          window.prompt('Copy value:', value);
+        });
+    }
+
+    function downloadKml24h(btn) {
+      const originalText = btn.textContent;
+      fetch('vario_chart.php?hours=24')
+        .then(r => r.json())
+        .then(rows => {
+          let kml =
+            `<?xml version="1.0" encoding="UTF-8"?>\n` +
+            `<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n<name>Wuzi Vario Track</name>\n`;
+
+          kml += `<Placemark>\n<name>Track</name>\n<LineString>\n<coordinates>\n`;
+          rows.forEach(row => {
+            const lon = Number(row.lon ?? row.gps_lng);
+            const lat = Number(row.lat ?? row.gps_lat);
+            const alt = Number(row.gps_alt ?? row.baro_alt ?? 0);
+            if (Number.isFinite(lon) && Number.isFinite(lat)) {
+              kml += `${lon},${lat},${Number.isFinite(alt) ? alt : 0}\n`;
+            }
+          });
+          kml += `</coordinates>\n</LineString>\n</Placemark>\n`;
+          kml += `</Document>\n</kml>`;
+
+          const now = new Date();
+          const pad = n => n.toString().padStart(2, '0');
+          const fileName = `wuzi_vario_${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}.kml`;
+
+          const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 100);
+          flashButtonText(btn, 'KML ready', originalText);
+        })
+        .catch(() => {
+          flashButtonText(btn, 'KML error', originalText);
+        });
+    }
+
+    function downloadDbCsv(btn) {
+      const originalText = btn.textContent;
+      fetch('vario_db_all.php')
+        .then(r => r.json())
+        .then(rows => {
+          if (!rows.length) {
+            flashButtonText(btn, 'No data', originalText);
+            return;
+          }
+          const header = Object.keys(rows[0]).join(';');
+          const csv = [header].concat(
+            rows.map(row => Object.values(row).map(v => (v !== null ? String(v).replace(/[\r\n;]/g, ' ') : '')).join(';'))
+          ).join('\r\n');
+
+          const now = new Date();
+          const pad = n => n.toString().padStart(2, '0');
+          const fileName = `wuzi_vario_${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}.csv`;
+          const blob = new Blob([csv], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 100);
+          flashButtonText(btn, 'CSV ready', originalText);
+        })
+        .catch(() => {
+          flashButtonText(btn, 'CSV error', originalText);
+        });
+    }
+
+    document.getElementById('copyLatLngBtn').addEventListener('click', function() {
+      copyLatestCoordinates('latlon', this);
+    });
+    document.getElementById('copyLatBtn').addEventListener('click', function() {
+      copyLatestCoordinates('lat', this);
+    });
+    document.getElementById('copyLngBtn').addEventListener('click', function() {
+      copyLatestCoordinates('lon', this);
+    });
+    document.getElementById('downloadKmlBtn').addEventListener('click', function() {
+      downloadKml24h(this);
+    });
+    document.getElementById('downloadCsvBtn').addEventListener('click', function() {
+      downloadDbCsv(this);
+    });
 
     document.getElementById('sortColumn').addEventListener('change', function() {
       sortColumn = this.value;
@@ -198,6 +387,7 @@
       fetch('vario_chart.php?hours=' + hoursBack)
         .then(r => r.json())
         .then(rows => {
+          setLatestCoordinatesFromRows(rows);
           // Filter direkt nach dem Laden!
           const now = new Date();
           rows = rows.filter(row => {
