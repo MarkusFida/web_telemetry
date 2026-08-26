@@ -1422,7 +1422,7 @@
     circle draw
   </button>
   <button id="gps-center-btn"
-    style="position:absolute;top:20px;right:180px;z-index:1200;background:#333;color:#ffe066;border-radius:8px;padding:8px 18px;border:none;font-size:1.1em;font-weight:bold;box-shadow:0 0 8px #000;cursor:pointer;display:none;">
+    style="position:absolute;top:20px;right:20px;z-index:1200;background:#333;color:#ffe066;border-radius:8px;padding:8px 18px;border:none;font-size:1.1em;font-weight:bold;box-shadow:0 0 8px #000;cursor:pointer;display:block;">
     Center GPS
   </button>
   <div id="circle-input-panel" style="display:none;position:absolute;top:70px;right:320px;z-index:1300;background:#222;padding:10px 18px;border-radius:8px;box-shadow:0 0 8px #000;">
@@ -1628,7 +1628,6 @@
     let trajTracks = [];
     let trajLayers = [];
     let trajFileLoaded = false;
-    let autoCenterGps = true;
     let trajWaypointMarkers = [];
     let trajHourMarkers = [];
     let trajSelected = [];
@@ -1677,6 +1676,7 @@
 
     const EPR131_LAYER_VISIBILITY_KEY = 'epr131LayerVisible';
     const epr131Airspace = L.layerGroup();
+    const gbCompetitionArea = L.layerGroup();
 
     function fetchWithParentFallback(path, options) {
       return fetch(path, options).then(response => {
@@ -1753,6 +1753,40 @@
         });
     }
 
+    function loadGbCompetitionKmlOverlay() {
+      fetchWithParentFallback('competition_area_gb_2026.kml', { cache: 'no-cache' })
+        .then(response => response.text())
+        .then(kmlText => {
+          if (typeof toGeoJSON === 'undefined') {
+            throw new Error('toGeoJSON library is not available.');
+          }
+
+          const xml = new DOMParser().parseFromString(kmlText, 'application/xml');
+          const geojson = toGeoJSON.kml(xml);
+
+          const kmlLayer = L.geoJSON(geojson, {
+            style: {
+              color: '#ff2a2a',
+              weight: 3,
+              opacity: 0.95,
+              fill: false,
+              fillOpacity: 0
+            },
+            onEachFeature: function(feature, layer) {
+              const name = feature?.properties?.name || 'GB Competition Area 2026';
+              const description = feature?.properties?.description || 'Competition area boundary';
+              layer.bindPopup(`<b>${name}</b><br>${description}`);
+            }
+          });
+
+          gbCompetitionArea.clearLayers();
+          gbCompetitionArea.addLayer(kmlLayer);
+        })
+        .catch(err => {
+          console.error('GB competition KML could not be loaded:', err);
+        });
+    }
+
     const baseLayers = {
       "OSM": osm,
       "Satellite": esriSat,
@@ -1760,7 +1794,8 @@
     };
     const overlays = {
       "OpenAIP Airspace": openAIP,
-      "EPR131 Airspace (KML)": epr131Airspace
+      "EPR131 Airspace (KML)": epr131Airspace,
+      "GB Competition Area 2026 (KML)": gbCompetitionArea
     };
 
     map = L.map('map', {
@@ -1770,6 +1805,7 @@
     });
     L.control.layers(baseLayers, overlays).addTo(map);
     loadEpr131KmlOverlay();
+    loadGbCompetitionKmlOverlay();
     const savedMobileBaseLayer = localStorage.getItem('mobileMapBaseLayer');
     if (savedMobileBaseLayer && baseLayers[savedMobileBaseLayer] && savedMobileBaseLayer !== 'OSM') {
       map.removeLayer(osm);
@@ -1840,6 +1876,13 @@
       if (e.layer === epr131Airspace) {
         saveEpr131VisibilityPreference(true);
         epr131Airspace.eachLayer(layer => {
+          if (layer && typeof layer.bringToFront === 'function') {
+            layer.bringToFront();
+          }
+        });
+      }
+      if (e.layer === gbCompetitionArea) {
+        gbCompetitionArea.eachLayer(layer => {
           if (layer && typeof layer.bringToFront === 'function') {
             layer.bringToFront();
           }
@@ -3641,9 +3684,14 @@
     }
 
     function centerOnGps() {
-      autoCenterGps = true;
+      const zoomLevel = Math.max(map.getZoom(), 10);
+      if (lastKnownGpsData && hasValidGpsFix(lastKnownGpsData)) {
+        map.setView([lastKnownGpsData.gps_lat, lastKnownGpsData.gps_lng], zoomLevel);
+        return;
+      }
       if (marker && marker.getLatLng) {
-        map.setView([data.gps_lat, data.gps_lng], map.getZoom());
+        const pos = marker.getLatLng();
+        map.setView([pos.lat, pos.lng], zoomLevel);
       }
     }
 
@@ -3655,12 +3703,6 @@
       }
     });
     document.getElementById('gps-center-btn').addEventListener('click', centerOnGps);
-
-    map.on('movestart', function(e) {
-      if (autoCenterGps) {
-        autoCenterGps = false;
-      }
-    });
 
     map.on('moveend zoomend', updateExtrapolatedTrack);
     map.on('zoomend', () => {
@@ -3924,8 +3966,6 @@
         .catch(() => callback(null));
     }
 
-    let firstGpsCenterDone = false;
-
     function updateMap(data) {
       if (!data.gps_lat || !data.gps_lng || isNaN(data.gps_lat) || isNaN(data.gps_lng)) return;
 
@@ -3979,15 +4019,10 @@
 
       if (!marker) {
         marker = L.marker([data.gps_lat, data.gps_lng]).addTo(map)
-          .bindPopup(popupText, { maxWidth: 400, minWidth: 260, autoPan: true });
+          .bindPopup(popupText, { maxWidth: 400, minWidth: 260, autoPan: false });
       } else {
         marker.setLatLng([data.gps_lat, data.gps_lng])
           .setPopupContent(popupText);
-      }
-
-      if (autoCenterGps || !firstGpsCenterDone) {
-        map.setView([data.gps_lat, data.gps_lng], map.getZoom());
-        firstGpsCenterDone = true;
       }
 
       // GND Elevation asynchron holen und Popup aktualisieren
