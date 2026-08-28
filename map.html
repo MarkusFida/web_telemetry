@@ -33,6 +33,24 @@
       display: block;
       position: relative;
     }
+    .external-balloon-label {
+      width: max-content !important;
+      height: auto !important;
+      pointer-events: auto;
+    }
+    .external-balloon-label span {
+      display: block;
+      padding: 2px 5px;
+      border: 1px solid #00f0ff;
+      border-radius: 3px;
+      background: rgba(0, 24, 32, 0.9);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.2;
+      white-space: nowrap;
+      text-shadow: 1px 1px 2px #000;
+    }
     #compass-container {
       position: absolute;
       top: 18px;
@@ -739,9 +757,21 @@
       </div>
     </div>
     <div id="traj-file-section">
-      <div style="display:flex;flex-direction:column;align-items:flex-start;">
+      <div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;">
         <input type="file" id="trajektorie-gpx" accept=".gpx,.kml,.kmz" multiple title="Load GPX/KML/KMZ with multiple tracks"/>
         <div id="trajektorie-filelist" style="margin-top:4px;color:#00bfff;font-size:1.05em;"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-top:10px;padding-top:8px;border-top:1px solid #444;">
+        <label style="color:#ffe066;font-size:0.95em;">External balloon live link</label>
+        <input id="external-balloon-url" type="url" value="https://yb.tl/qzbdqvrnty.kml" placeholder="https://example.com/balloons.kml" style="width:260px;background:#111;color:#ffe066;border:1px solid #555;border-radius:4px;padding:4px 6px;" />
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <div style="display:grid;grid-template-columns:auto 70px auto;align-items:center;column-gap:6px;width:max-content;white-space:nowrap;">
+          <label for="external-balloon-refresh-seconds" style="color:#ffe066;font-size:0.9em;">Refresh</label>
+          <input id="external-balloon-refresh-seconds" type="number" min="5" max="3600" step="5" value="30" style="width:70px;box-sizing:border-box;background:#111;color:#ffe066;border:1px solid #555;border-radius:4px;padding:3px 5px;">
+          <span style="color:#ffe066;font-size:0.85em;">s</span>
+          </div>
+          <button id="external-balloon-load" type="button" style="background:#333;color:#ffe066;border-radius:6px;padding:4px 10px;border:none;cursor:pointer;">Load balloons</button>
+        </div>
       </div>
     </div>
     <div id="traj-buttons-section">
@@ -1257,6 +1287,245 @@
       }
     }
 
+    const externalBalloonLayer = L.layerGroup();
+    let externalBalloonRefreshTimer = null;
+    let externalBalloonRefreshSeconds = 30;
+    let lastExternalBalloonUrl = '';
+
+    function setExternalBalloonRefreshSeconds(value) {
+      const seconds = Math.min(3600, Math.max(5, Number(value) || 30));
+      externalBalloonRefreshSeconds = seconds;
+      localStorage.setItem('externalBalloonRefreshSeconds', String(seconds));
+      const input = document.getElementById('external-balloon-refresh-seconds');
+      if (input) input.value = String(seconds);
+    }
+
+    function parseKmlCoordinateList(text) {
+      if (!text) return [];
+      const coords = [];
+      const regex = /([-0-9.]+)\s*,\s*([-0-9.]+)\s*,?\s*([-0-9.]+)?/g;
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        const lon = parseFloat(match[1]);
+        const lat = parseFloat(match[2]);
+        const alt = match[3] !== undefined ? parseFloat(match[3]) : 0;
+        if (Number.isFinite(lon) && Number.isFinite(lat)) {
+          coords.push([lon, lat, Number.isFinite(alt) ? alt : 0]);
+        }
+      }
+      return coords;
+    }
+
+    function getChildElementsByLocalName(node, localName) {
+      const results = [];
+      if (!node || !node.childNodes) return results;
+      Array.from(node.childNodes).forEach(child => {
+        if (child.nodeType !== 1) return;
+        const childLocalName = (child.localName || child.tagName || '').replace(/^.*:/, '');
+        if (childLocalName === localName) results.push(child);
+        results.push(...getChildElementsByLocalName(child, localName));
+      });
+      return results;
+    }
+
+    function getFirstChildTextByLocalName(node, localName) {
+      const child = getChildElementsByLocalName(node, localName)[0];
+      return child ? (child.textContent || '').trim() : '';
+    }
+
+    function parseGoogleEarthKmlToGeoJson(kmlText) {
+      const featureCollection = { type: 'FeatureCollection', features: [] };
+      const xml = new DOMParser().parseFromString(kmlText, 'application/xml');
+      const parserError = xml.querySelector('parsererror');
+      if (parserError) {
+        throw new Error('KML parser error');
+      }
+
+      const placemarks = getChildElementsByLocalName(xml.documentElement, 'Placemark');
+      placemarks.forEach(placemark => {
+        const name = getFirstChildTextByLocalName(placemark, 'name') || 'Balloon track';
+
+        const trackNodes = getChildElementsByLocalName(placemark, 'Track');
+        trackNodes.forEach(trackNode => {
+          const coords = [];
+          const coordNodes = getChildElementsByLocalName(trackNode, 'coord');
+          coordNodes.forEach(coordNode => {
+            const raw = (coordNode.textContent || '').trim();
+            const parts = raw.split(/\s+/).join(' ').trim().split(/\s+|,/).filter(Boolean);
+            if (parts.length < 2) return;
+            const lon = parseFloat(parts[0]);
+            const lat = parseFloat(parts[1]);
+            const alt = parts.length > 2 ? parseFloat(parts[2]) : 0;
+            if (Number.isFinite(lon) && Number.isFinite(lat)) {
+              coords.push([lon, lat, Number.isFinite(alt) ? alt : 0]);
+            }
+          });
+
+          if (coords.length > 1) {
+            featureCollection.features.push({
+              type: 'Feature',
+              properties: { name, altitude: coords[coords.length - 1][2] },
+              geometry: {
+                type: 'LineString',
+                coordinates: coords.map(([lon, lat]) => [lon, lat])
+              }
+            });
+          }
+        });
+
+        const lineStringNodes = getChildElementsByLocalName(placemark, 'LineString');
+        lineStringNodes.forEach(lineStringNode => {
+          const coordNode = getChildElementsByLocalName(lineStringNode, 'coordinates')[0];
+          if (!coordNode) return;
+          const parsedCoords = parseKmlCoordinateList(coordNode.textContent || '');
+          if (parsedCoords.length > 1) {
+            featureCollection.features.push({
+              type: 'Feature',
+              properties: { name, altitude: parsedCoords[parsedCoords.length - 1][2] },
+              geometry: {
+                type: 'LineString',
+                coordinates: parsedCoords.map(([lon, lat]) => [lon, lat])
+              }
+            });
+          }
+        });
+      });
+
+      return featureCollection;
+    }
+
+    const DEFAULT_EXTERNAL_BALLOON_URL = 'https://yb.tl/qzbdqvrnty.kml';
+
+    function saveExternalBalloonSettings(url, refreshSeconds) {
+      localStorage.setItem('externalBalloonUrl', String(url || '').trim());
+      localStorage.setItem('externalBalloonRefreshSeconds', String(refreshSeconds || 30));
+    }
+
+    function loadExternalBalloonSettings() {
+      const savedUrl = localStorage.getItem('externalBalloonUrl') || DEFAULT_EXTERNAL_BALLOON_URL;
+      const savedRefresh = Number(localStorage.getItem('externalBalloonRefreshSeconds')) || 30;
+      const refreshSeconds = Math.min(3600, Math.max(5, Number(savedRefresh) || 30));
+      const urlInput = document.getElementById('external-balloon-url');
+      const refreshInput = document.getElementById('external-balloon-refresh-seconds');
+
+      if (urlInput && savedUrl) urlInput.value = savedUrl;
+      if (refreshInput) refreshInput.value = String(refreshSeconds);
+      if (savedUrl) {
+        lastExternalBalloonUrl = savedUrl;
+        externalBalloonRefreshSeconds = refreshSeconds;
+      }
+      return { url: savedUrl, refreshSeconds };
+    }
+
+    function loadExternalBalloonLayerFromUrl(url, layerControl) {
+      if (!url || !/^https?:\/\//i.test(url)) {
+        console.error('External balloon URL is invalid.');
+        return;
+      }
+
+      lastExternalBalloonUrl = url;
+      saveExternalBalloonSettings(url, externalBalloonRefreshSeconds);
+      const fileExt = url.split('?')[0].split('.').pop().toLowerCase();
+      externalBalloonLayer.clearLayers();
+      if (!map.hasLayer(externalBalloonLayer)) {
+        externalBalloonLayer.addTo(map);
+      }
+      const hasExternalBalloonOverlay = !!(layerControl && Object.values(layerControl._layers || {}).some(layerEntry => {
+        const label = layerEntry && (layerEntry.name || layerEntry.layer && layerEntry.layer.options && layerEntry.layer.options.name);
+        return label === 'External balloons';
+      }));
+      if (layerControl && !hasExternalBalloonOverlay) {
+        layerControl.addOverlay(externalBalloonLayer, 'External balloons');
+      }
+
+      const proxyUrl = `proxy.php?url=${encodeURIComponent(url)}&_=${Date.now()}`;
+      fetch(proxyUrl, { cache: 'no-cache' })
+        .then(response => {
+          if (!response.ok) throw new Error(`External balloon URL HTTP ${response.status}`);
+          return response.text();
+        })
+        .then(text => {
+          const trimmed = (text || '').trim();
+          if (!trimmed) throw new Error('External balloon URL returned empty content.');
+          if (/^\s*<!doctype html|^\s*<html\b|<script\b/i.test(trimmed)) {
+            throw new Error('The URL points to a web page, not a KML/GPX/GeoJSON file.');
+          }
+
+          let geojson = null;
+          if (['json', 'geojson'].includes(fileExt)) {
+            geojson = JSON.parse(trimmed);
+          } else if (fileExt === 'gpx') {
+            const xml = new DOMParser().parseFromString(trimmed, 'application/xml');
+            geojson = toGeoJSON.gpx(xml);
+          } else {
+            try {
+              geojson = parseGoogleEarthKmlToGeoJson(trimmed);
+            } catch (err) {
+              console.warn('Custom KML parse failed, falling back to default parser.', err);
+              const xml = new DOMParser().parseFromString(trimmed, 'application/xml');
+              geojson = toGeoJSON.kml(xml);
+            }
+          }
+
+          if (!geojson || !geojson.features || geojson.features.length === 0) {
+            throw new Error('The source file does not contain any geographic features to display.');
+          }
+
+          console.log('External balloon features loaded:', geojson.features.length);
+
+          const layer = L.geoJSON(geojson, {
+            style: { color: '#00f0ff', weight: 3, opacity: 0.95 },
+            onEachFeature: function(feature, lyr) {
+              const name = feature?.properties?.name || 'Balloon track';
+              const altitude = Number(feature?.properties?.altitude);
+              const altitudeText = Number.isFinite(altitude) ? `<br>Höhe: ${Math.round(altitude)} m` : '';
+              lyr.bindPopup(`<b>${name}</b>${altitudeText}`);
+            }
+          });
+          const labelLayer = L.layerGroup();
+          geojson.features.forEach(feature => {
+            const name = feature?.properties?.name || 'Balloon track';
+            const altitude = Number(feature?.properties?.altitude);
+            const altitudeText = Number.isFinite(altitude) ? ` · ${Math.round(altitude)} m` : '';
+            const geometry = feature?.geometry;
+            if (!geometry || geometry.type !== 'LineString' || !Array.isArray(geometry.coordinates)) return;
+            const lastCoordinate = geometry.coordinates[geometry.coordinates.length - 1];
+            if (!Array.isArray(lastCoordinate) || lastCoordinate.length < 2) return;
+            const label = L.marker([lastCoordinate[1], lastCoordinate[0]], {
+              icon: L.divIcon({
+                className: 'external-balloon-label',
+                html: `<span>${String(name).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character])}${altitudeText}</span>`,
+                iconSize: null,
+                iconAnchor: [-6, 10]
+              }),
+              interactive: true
+            });
+            label.bindPopup(`<b>${String(name).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character])}</b>${Number.isFinite(altitude) ? `<br>Höhe: ${Math.round(altitude)} m` : ''}`);
+            labelLayer.addLayer(label);
+          });
+          externalBalloonLayer.clearLayers();
+          externalBalloonLayer.addLayer(layer);
+          externalBalloonLayer.addLayer(labelLayer);
+          if (!map.hasLayer(externalBalloonLayer)) {
+            externalBalloonLayer.addTo(map);
+          }
+
+        })
+        .catch(err => {
+          console.error('External balloon source could not be loaded:', err.message || err);
+          externalBalloonLayer.clearLayers();
+        });
+    }
+
+    function applyExternalBalloonRefreshTimer(layerControl) {
+      if (externalBalloonRefreshTimer) clearInterval(externalBalloonRefreshTimer);
+      externalBalloonRefreshTimer = setInterval(() => {
+        if (document.visibilityState === 'visible' && lastExternalBalloonUrl) {
+          loadExternalBalloonLayerFromUrl(lastExternalBalloonUrl, layerControl);
+        }
+      }, externalBalloonRefreshSeconds * 1000);
+    }
+
     const baseLayers = {
       "OSM": osm,
       "Satellite": esriSat,
@@ -1277,6 +1546,41 @@
     loadEpr131KmlOverlay();
     loadGbCompetitionKmlOverlay();
     loadDynamicMapOverlays(layerControl);
+
+    const externalBalloonUrlInput = document.getElementById('external-balloon-url');
+    const externalBalloonRefreshInput = document.getElementById('external-balloon-refresh-seconds');
+    const externalBalloonLoadButton = document.getElementById('external-balloon-load');
+
+    const savedExternalSettings = loadExternalBalloonSettings();
+
+    if (externalBalloonRefreshInput) {
+      const savedRefresh = Number(localStorage.getItem('externalBalloonRefreshSeconds')) || 30;
+      externalBalloonRefreshInput.value = String(Math.min(3600, Math.max(5, savedRefresh)));
+      externalBalloonRefreshSeconds = Math.min(3600, Math.max(5, Number(savedRefresh) || 30));
+      externalBalloonRefreshInput.addEventListener('change', function() {
+        setExternalBalloonRefreshSeconds(this.value);
+        saveExternalBalloonSettings(externalBalloonUrlInput ? externalBalloonUrlInput.value.trim() : '', externalBalloonRefreshSeconds);
+        applyExternalBalloonRefreshTimer(layerControl);
+      });
+    }
+
+    if (externalBalloonLoadButton) {
+      externalBalloonLoadButton.addEventListener('click', function() {
+        const url = externalBalloonUrlInput ? externalBalloonUrlInput.value.trim() : '';
+        if (!url) {
+          console.warn('No external balloon URL entered.');
+          return;
+        }
+        saveExternalBalloonSettings(url, externalBalloonRefreshSeconds);
+        loadExternalBalloonLayerFromUrl(url, layerControl);
+        applyExternalBalloonRefreshTimer(layerControl);
+      });
+    }
+
+    if (savedExternalSettings.url) {
+      loadExternalBalloonLayerFromUrl(savedExternalSettings.url, layerControl);
+      applyExternalBalloonRefreshTimer(layerControl);
+    }
 
     setTimeout(() => {
       // Suche das Layer-Control
