@@ -293,6 +293,8 @@
     .bottom-copy-bar {
       display: flex;
       justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
       margin: 20px 0 28px;
     }
   </style>
@@ -342,7 +344,7 @@
               <h2>Position / Load</h2>
               <div class="row"><span class="label">Lat</span><span class="value" id="gps_lat">0.000000</span></div>
               <div class="row"><span class="label">Long</span><span class="value" id="gps_lng">0.000000</span></div>
-                      <div class="row"><span class="label yellow">Sand count</span><span class="count-value"><span class="value yellow" id="sand_count">--</span><span class="count-change-time" id="sand_count_time">since: --</span></span></div>
+              <div class="row"><span class="label yellow">Drop count</span><span class="count-value"><span class="value yellow" id="ballast_drop_count">--</span><span class="count-change-time" id="ballast_drop_count_time">since: --</span></span></div>
             </section>
           </div>
         </div>
@@ -366,6 +368,8 @@
   </div>
   <div class="bottom-copy-bar">
     <button id="copy-live-coords-btn" type="button">Live koordinate copy</button>
+    <button id="copy-live-lat-btn" type="button">Live Lat copy</button>
+    <button id="copy-live-lng-btn" type="button">Live Long copy</button>
   </div>
   <script>
     function getBaroAltitudeAtQnh1013(data) {
@@ -420,10 +424,9 @@
       document.getElementById('humidity').textContent = (data.humidity !== undefined && !isNaN(data.humidity))? Number(data.humidity).toFixed(1): '--';
       document.getElementById('gps_lat').textContent = (data.gps_lat || 0).toFixed(6);
       document.getElementById('gps_lng').textContent = (data.gps_lng || 0).toFixed(6);
+      document.getElementById('ballast_drop_count').textContent = (typeof data.ballast_drop_count !== "undefined") ? data.ballast_drop_count : "--";
+      document.getElementById('ballast_drop_count_time').textContent = 'since: ' + formatElapsedTime(data.ballast_drop_time);
       document.getElementById('vario').textContent = (typeof data.vario === "number" && !isNaN(data.vario)) ? data.vario.toFixed(1) : "--";
-      const sandCount = databaseCountData?.sand_count ?? ((typeof data.sand_count !== "undefined") ? data.sand_count : "--");
-      document.getElementById('sand_count').textContent = sandCount;
-      document.getElementById('sand_count_time').textContent = 'since: ' + formatElapsedTime(databaseCountData?.sand_changed_at);
 
       // Balkenanzeige für Vario
       const varioFill = document.getElementById('vario_fill');
@@ -496,25 +499,36 @@
       };
     }
 
-    document.getElementById('copy-live-coords-btn').addEventListener('click', function() {
-      const latText = document.getElementById('gps_lat').textContent || '0.000000';
-      const lngText = document.getElementById('gps_lng').textContent || '0.000000';
-      const coordText = `${latText}, ${lngText}`;
-      const button = this;
-
+    function copyLiveText(text, button) {
       if (navigator.clipboard) {
-        navigator.clipboard.writeText(coordText).then(() => {
+        navigator.clipboard.writeText(text).then(() => {
           const oldText = button.textContent;
           button.textContent = 'Copied!';
           setTimeout(() => {
             button.textContent = oldText;
           }, 1200);
         }).catch(() => {
-          window.prompt('Copy coordinates:', coordText);
+          window.prompt('Copy value:', text);
         });
       } else {
-        window.prompt('Copy coordinates:', coordText);
+        window.prompt('Copy value:', text);
       }
+    }
+
+    document.getElementById('copy-live-coords-btn').addEventListener('click', function() {
+      const latText = document.getElementById('gps_lat').textContent || '0.000000';
+      const lngText = document.getElementById('gps_lng').textContent || '0.000000';
+      copyLiveText(`${latText}, ${lngText}`, this);
+    });
+
+    document.getElementById('copy-live-lat-btn').addEventListener('click', function() {
+      const latText = document.getElementById('gps_lat').textContent || '0.000000';
+      copyLiveText(latText, this);
+    });
+
+    document.getElementById('copy-live-lng-btn').addEventListener('click', function() {
+      const lngText = document.getElementById('gps_lng').textContent || '0.000000';
+      copyLiveText(lngText, this);
     });
 
     function fetchCountChangeData() {

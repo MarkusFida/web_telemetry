@@ -1064,6 +1064,18 @@
       localStorage.setItem(EPR131_LAYER_VISIBILITY_KEY, isVisible ? '1' : '0');
     }
 
+    const GB_COMPETITION_LAYER_VISIBILITY_KEY = 'gbCompetitionLayerVisible';
+
+    function readGbCompetitionVisibilityPreference() {
+      const stored = localStorage.getItem(GB_COMPETITION_LAYER_VISIBILITY_KEY);
+      if (stored === null) return false;
+      return stored === '1';
+    }
+
+    function saveGbCompetitionVisibilityPreference(isVisible) {
+      localStorage.setItem(GB_COMPETITION_LAYER_VISIBILITY_KEY, isVisible ? '1' : '0');
+    }
+
     function loadEpr131KmlOverlay() {
       fetchWithParentFallback('epr131_airspace.kml', { cache: 'no-cache' })
         .then(response => {
@@ -1137,10 +1149,114 @@
 
           gbCompetitionArea.clearLayers();
           gbCompetitionArea.addLayer(kmlLayer);
+
+          // Sichtbarkeit erst nach erfolgreichem Laden der Datei anwenden.
+          if (readGbCompetitionVisibilityPreference()) {
+            if (!map.hasLayer(gbCompetitionArea)) {
+              gbCompetitionArea.addTo(map);
+            }
+          } else if (map.hasLayer(gbCompetitionArea)) {
+            map.removeLayer(gbCompetitionArea);
+          }
         })
         .catch(err => {
           console.error('GB competition KML could not be loaded:', err);
         });
+    }
+
+    // Ordner mit frei ablegbaren GPX/KML/KMZ-Dateien (liegt im Root, per fetchWithParentFallback geteilt).
+    const MAP_OVERLAYS_FOLDER = 'map_overlays/';
+    const MAP_OVERLAY_VISIBILITY_KEY = 'mapOverlayVisibility';
+    const dynamicOverlayFileNames = new Set();
+
+    function readOverlayVisibilityMap() {
+      try {
+        return JSON.parse(localStorage.getItem(MAP_OVERLAY_VISIBILITY_KEY)) || {};
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function saveOverlayVisibility(fileName, isVisible) {
+      const prefs = readOverlayVisibilityMap();
+      prefs[fileName] = isVisible;
+      localStorage.setItem(MAP_OVERLAY_VISIBILITY_KEY, JSON.stringify(prefs));
+    }
+
+    function loadDynamicMapOverlays(layerControl) {
+      // Sichtbarkeit der GPX/KML-Overlays merken, damit sie nach Reload erhalten bleibt.
+      map.on('overlayadd', function(e) {
+        if (dynamicOverlayFileNames.has(e.name)) saveOverlayVisibility(e.name, true);
+      });
+      map.on('overlayremove', function(e) {
+        if (dynamicOverlayFileNames.has(e.name)) saveOverlayVisibility(e.name, false);
+      });
+
+      fetchWithParentFallback('list_map_overlays.php', { cache: 'no-cache' })
+        .then(response => response.json())
+        .then(fileNames => {
+          fileNames.forEach(fileName => addDynamicOverlayLayer(fileName, layerControl));
+        })
+        .catch(err => console.error('Map overlay files could not be listed:', err));
+    }
+
+    // Palette in Rot-/Orangetoenen fuer die frei ablegbaren GPX/KML-Overlays.
+    const OVERLAY_COLOR_PALETTE = ['#ff0000', '#ff3300', '#ff5500', '#ff7700', '#ff9900', '#ff2a2a'];
+
+    function getOverlayColor(fileName) {
+      let hash = 0;
+      for (let i = 0; i < fileName.length; i++) hash = (hash * 31 + fileName.charCodeAt(i)) >>> 0;
+      return OVERLAY_COLOR_PALETTE[hash % OVERLAY_COLOR_PALETTE.length];
+    }
+
+    function addDynamicOverlayLayer(fileName, layerControl) {
+      const ext = fileName.toLowerCase().split('.').pop();
+      const group = L.layerGroup();
+
+      function addGeoJsonToGroup(geojson) {
+        const layer = L.geoJSON(geojson, {
+          style: { color: getOverlayColor(fileName), weight: 3, opacity: 0.9 },
+          onEachFeature: function(feature, lyr) {
+            const name = feature?.properties?.name || fileName;
+            lyr.bindPopup(`<b>${name}</b>`);
+          }
+        });
+        group.addLayer(layer);
+        layerControl.addOverlay(group, fileName);
+        dynamicOverlayFileNames.add(fileName);
+        if (readOverlayVisibilityMap()[fileName]) {
+          group.addTo(map);
+        }
+      }
+
+      if (ext === 'kmz') {
+        if (typeof JSZip === 'undefined') {
+          console.error(`Overlay ${fileName} needs JSZip to read KMZ files.`);
+          return;
+        }
+        fetchWithParentFallback(MAP_OVERLAYS_FOLDER + fileName)
+          .then(response => response.arrayBuffer())
+          .then(buf => JSZip.loadAsync(buf))
+          .then(zip => {
+            const kmlEntry = Object.keys(zip.files).find(n => n.toLowerCase().endsWith('.kml'));
+            if (!kmlEntry) throw new Error('No KML found inside KMZ');
+            return zip.files[kmlEntry].async('string');
+          })
+          .then(kmlText => {
+            const xml = new DOMParser().parseFromString(kmlText, 'application/xml');
+            addGeoJsonToGroup(toGeoJSON.kml(xml));
+          })
+          .catch(err => console.error(`Overlay ${fileName} could not be loaded:`, err));
+      } else if (ext === 'kml' || ext === 'gpx') {
+        fetchWithParentFallback(MAP_OVERLAYS_FOLDER + fileName, { cache: 'no-cache' })
+          .then(response => response.text())
+          .then(text => {
+            const xml = new DOMParser().parseFromString(text, 'application/xml');
+            const geojson = ext === 'kml' ? toGeoJSON.kml(xml) : toGeoJSON.gpx(xml);
+            addGeoJsonToGroup(geojson);
+          })
+          .catch(err => console.error(`Overlay ${fileName} could not be loaded:`, err));
+      }
     }
 
     const baseLayers = {
@@ -1159,9 +1275,10 @@
       zoom: 12,
       layers: [osm]
     });
-    L.control.layers(baseLayers, overlays).addTo(map);
+    const layerControl = L.control.layers(baseLayers, overlays).addTo(map);
     loadEpr131KmlOverlay();
     loadGbCompetitionKmlOverlay();
+    loadDynamicMapOverlays(layerControl);
 
     setTimeout(() => {
       // Suche das Layer-Control
@@ -1235,6 +1352,7 @@
         });
       }
       if (e.layer === gbCompetitionArea) {
+        saveGbCompetitionVisibilityPreference(true);
         gbCompetitionArea.eachLayer(layer => {
           if (layer && typeof layer.bringToFront === 'function') {
             layer.bringToFront();
@@ -1246,6 +1364,9 @@
     map.on('layerremove', function(e) {
       if (e.layer === epr131Airspace) {
         saveEpr131VisibilityPreference(false);
+      }
+      if (e.layer === gbCompetitionArea) {
+        saveGbCompetitionVisibilityPreference(false);
       }
     });
 

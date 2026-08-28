@@ -293,6 +293,8 @@
     .bottom-copy-bar {
       display: flex;
       justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
       margin: 20px 0 28px;
     }
   </style>
@@ -367,6 +369,8 @@
   </div>
   <div class="bottom-copy-bar">
     <button id="copy-live-coords-btn" type="button">Live koordinate copy</button>
+    <button id="copy-live-lat-btn" type="button">Live Lat copy</button>
+    <button id="copy-live-lng-btn" type="button">Live Long copy</button>
   </div>
   <script>
     function getBaroAltitudeAtQnh1013(data) {
@@ -500,25 +504,36 @@
       };
     }
 
-    document.getElementById('copy-live-coords-btn').addEventListener('click', function() {
-      const latText = document.getElementById('gps_lat').textContent || '0.000000';
-      const lngText = document.getElementById('gps_lng').textContent || '0.000000';
-      const coordText = `${latText}, ${lngText}`;
-      const button = this;
-
+    function copyLiveText(text, button) {
       if (navigator.clipboard) {
-        navigator.clipboard.writeText(coordText).then(() => {
+        navigator.clipboard.writeText(text).then(() => {
           const oldText = button.textContent;
           button.textContent = 'Copied!';
           setTimeout(() => {
             button.textContent = oldText;
           }, 1200);
         }).catch(() => {
-          window.prompt('Copy coordinates:', coordText);
+          window.prompt('Copy value:', text);
         });
       } else {
-        window.prompt('Copy coordinates:', coordText);
+        window.prompt('Copy value:', text);
       }
+    }
+
+    document.getElementById('copy-live-coords-btn').addEventListener('click', function() {
+      const latText = document.getElementById('gps_lat').textContent || '0.000000';
+      const lngText = document.getElementById('gps_lng').textContent || '0.000000';
+      copyLiveText(`${latText}, ${lngText}`, this);
+    });
+
+    document.getElementById('copy-live-lat-btn').addEventListener('click', function() {
+      const latText = document.getElementById('gps_lat').textContent || '0.000000';
+      copyLiveText(latText, this);
+    });
+
+    document.getElementById('copy-live-lng-btn').addEventListener('click', function() {
+      const lngText = document.getElementById('gps_lng').textContent || '0.000000';
+      copyLiveText(lngText, this);
     });
 
     // Live-Daten alle 2 Sekunden aktualisieren
