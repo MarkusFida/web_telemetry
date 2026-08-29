@@ -51,6 +51,36 @@
       white-space: nowrap;
       text-shadow: 1px 1px 2px #000;
     }
+    .external-balloon-flag {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      margin-right: 3px;
+      border: 1px solid #fff;
+      border-radius: 50%;
+      box-sizing: border-box;
+      vertical-align: -2px;
+    }
+    .external-balloon-flag.flag-SUI {
+      background: #d52b1e !important;
+      position: relative;
+    }
+    .external-balloon-flag.flag-SUI::before,
+    .external-balloon-flag.flag-SUI::after {
+      content: '';
+      position: absolute;
+      background: #fff;
+      left: 3px;
+      top: 5px;
+      width: 6px;
+      height: 2px;
+    }
+    .external-balloon-flag.flag-SUI::after {
+      left: 5px;
+      top: 3px;
+      width: 2px;
+      height: 6px;
+    }
     #compass-container {
       position: absolute;
       top: 18px;
@@ -2013,6 +2043,25 @@
       return `Richtung: ${Math.round(motion.course)}° ${direction}<br>Speed: ${(motion.speedKmh / 1.852).toFixed(1)} kt`;
     }
 
+    function externalBalloonFlag(name) {
+      const prefix = String(name || '').trim().toUpperCase().split('-')[0];
+      const flagBackgrounds = {
+        AUT: 'linear-gradient(#ed2939 0 33%,#fff 33% 67%,#ed2939 67%)',
+        BEL: 'linear-gradient(90deg,#000 0 33%,#fdda24 33% 67%,#ef3340 67%)',
+        ESP: 'linear-gradient(#aa151b 0 25%,#f1bf00 25% 75%,#aa151b 75%)',
+        FRA: 'linear-gradient(90deg,#002395 0 33%,#fff 33% 67%,#ed2939 67%)',
+        GBR: 'linear-gradient(35deg,#012169 0 38%,#fff 38% 45%,#cf142b 45% 55%,#fff 55% 62%,#012169 62%)',
+        GER: 'linear-gradient(#000 0 33%,#dd0000 33% 67%,#ffce00 67%)',
+        ITA: 'linear-gradient(90deg,#009246 0 33%,#fff 33% 67%,#ce2b37 67%)',
+        LTU: 'linear-gradient(#fdb913 0 33%,#006a44 33% 67%,#c1272d 67%)',
+        POL: 'linear-gradient(#fff 0 50%,#dc143c 50%)',
+        SUI: '#d52b1e',
+        USA: 'repeating-linear-gradient(#b22234 0 1px,#fff 1px 2px)'
+      };
+      const background = flagBackgrounds[prefix];
+      return background ? `<i class="external-balloon-flag flag-${prefix}" style="background:${background}"></i>` : '';
+    }
+
     function parseExternalKml(text) {
       const xml = new DOMParser().parseFromString(text, 'application/xml');
       if (xml.querySelector('parsererror')) throw new Error('KML parser error');
@@ -2056,7 +2105,8 @@
           const altitude = Math.round(feature.properties.altitude);
           const motionText = formatExternalBalloonMotion(feature.properties.motion);
           const motionLabel = feature.properties.motion ? ` · ${Math.round(feature.properties.motion.course)}° · ${(feature.properties.motion.speedKmh / 1.852).toFixed(1)} kt` : '';
-          labels.addLayer(L.marker([point[1], point[0]], { icon: L.divIcon({ className: 'external-balloon-label', html: `<span>${name} · ${altitude} m${motionLabel}</span>`, iconSize: null, iconAnchor: [-6, 10] }) }).bindPopup(`<b>${name}</b><br>Höhe: ${altitude} m${motionText ? `<br>${motionText}` : ''}`));
+          const flag = externalBalloonFlag(feature.properties.name);
+          labels.addLayer(L.marker([point[1], point[0]], { icon: L.divIcon({ className: 'external-balloon-label', html: `<span>${flag}${name} · ${altitude} m${motionLabel}</span>`, iconSize: null, iconAnchor: [-6, 10] }) }).bindPopup(`<b>${name}</b><br>Höhe: ${altitude} m${motionText ? `<br>${motionText}` : ''}`));
         });
         externalBalloonLayer.clearLayers();
         externalBalloonLayer.addLayer(layer);
