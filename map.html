@@ -1362,6 +1362,45 @@
       return child ? (child.textContent || '').trim() : '';
     }
 
+    function calculateExternalBalloonMotion(coords, timestamps) {
+      if (coords.length < 2 || timestamps.length < 2) return null;
+      const endIndex = Math.min(coords.length, timestamps.length) - 1;
+      const startIndex = Math.max(0, endIndex - 5);
+      const endTime = Date.parse(timestamps[endIndex]);
+      const startTime = Date.parse(timestamps[startIndex]);
+      if (!Number.isFinite(endTime) || !Number.isFinite(startTime) || endTime <= startTime) return null;
+
+      const [startLon, startLat] = coords[startIndex];
+      const [endLon, endLat] = coords[endIndex];
+      const radians = Math.PI / 180;
+      const startLatitude = startLat * radians;
+      const endLatitude = endLat * radians;
+      const longitudeDelta = (endLon - startLon) * radians;
+      let distanceMeters = 0;
+      for (let index = startIndex + 1; index <= endIndex; index++) {
+        const [previousLon, previousLat] = coords[index - 1];
+        const [currentLon, currentLat] = coords[index];
+        const latitudeDelta = (currentLat - previousLat) * radians;
+        const longitudeDelta = (currentLon - previousLon) * radians;
+        const haversine = Math.sin(latitudeDelta / 2) ** 2 + Math.cos(previousLat * radians) * Math.cos(currentLat * radians) * Math.sin(longitudeDelta / 2) ** 2;
+        distanceMeters += 6371000 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+      }
+      const bearingRadians = Math.atan2(
+        Math.sin(longitudeDelta) * Math.cos(endLatitude),
+        Math.cos(startLatitude) * Math.sin(endLatitude) - Math.sin(startLatitude) * Math.cos(endLatitude) * Math.cos(longitudeDelta)
+      );
+      const course = (bearingRadians / radians + 360) % 360;
+      const speedKmh = distanceMeters / 1000 / ((endTime - startTime) / 3600000);
+      return Number.isFinite(speedKmh) ? { course, speedKmh } : null;
+    }
+
+    function formatExternalBalloonMotion(motion) {
+      if (!motion) return '';
+      const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+      const direction = directions[Math.round(motion.course / 45) % directions.length];
+      return `Richtung: ${Math.round(motion.course)}° ${direction}<br>Speed: ${(motion.speedKmh / 1.852).toFixed(1)} kt`;
+    }
+
     function parseGoogleEarthKmlToGeoJson(kmlText) {
       const featureCollection = { type: 'FeatureCollection', features: [] };
       const xml = new DOMParser().parseFromString(kmlText, 'application/xml');
@@ -1389,11 +1428,13 @@
               coords.push([lon, lat, Number.isFinite(alt) ? alt : 0]);
             }
           });
+          const timestamps = getChildElementsByLocalName(trackNode, 'when').map(node => (node.textContent || '').trim());
+          const motion = calculateExternalBalloonMotion(coords, timestamps);
 
           if (coords.length > 1) {
             featureCollection.features.push({
               type: 'Feature',
-              properties: { name, altitude: coords[coords.length - 1][2] },
+              properties: { name, altitude: coords[coords.length - 1][2], motion },
               geometry: {
                 type: 'LineString',
                 coordinates: coords.map(([lon, lat]) => [lon, lat])
@@ -1499,7 +1540,8 @@
               const name = feature?.properties?.name || 'Balloon track';
               const altitude = Number(feature?.properties?.altitude);
               const altitudeText = Number.isFinite(altitude) ? `<br>Höhe: ${Math.round(altitude)} m` : '';
-              lyr.bindPopup(`<b>${name}</b>${altitudeText}`);
+              const motionText = formatExternalBalloonMotion(feature?.properties?.motion);
+              lyr.bindPopup(`<b>${name}</b>${altitudeText}${motionText ? `<br>${motionText}` : ''}`);
             }
           });
           const labelLayer = L.layerGroup();
@@ -1507,6 +1549,8 @@
             const name = feature?.properties?.name || 'Balloon track';
             const altitude = Number(feature?.properties?.altitude);
             const altitudeText = Number.isFinite(altitude) ? ` · ${Math.round(altitude)} m` : '';
+            const motionText = formatExternalBalloonMotion(feature?.properties?.motion);
+            const motionLabel = feature?.properties?.motion ? ` · ${Math.round(feature.properties.motion.course)}° · ${(feature.properties.motion.speedKmh / 1.852).toFixed(1)} kt` : '';
             const geometry = feature?.geometry;
             if (!geometry || geometry.type !== 'LineString' || !Array.isArray(geometry.coordinates)) return;
             const lastCoordinate = geometry.coordinates[geometry.coordinates.length - 1];
@@ -1514,13 +1558,13 @@
             const label = L.marker([lastCoordinate[1], lastCoordinate[0]], {
               icon: L.divIcon({
                 className: 'external-balloon-label',
-                html: `<span>${String(name).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character])}${altitudeText}</span>`,
+                html: `<span>${String(name).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character])}${altitudeText}${motionLabel}</span>`,
                 iconSize: null,
                 iconAnchor: [-6, 10]
               }),
               interactive: true
             });
-            label.bindPopup(`<b>${String(name).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character])}</b>${Number.isFinite(altitude) ? `<br>Höhe: ${Math.round(altitude)} m` : ''}`);
+            label.bindPopup(`<b>${String(name).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character])}</b>${Number.isFinite(altitude) ? `<br>Höhe: ${Math.round(altitude)} m` : ''}${motionText ? `<br>${motionText}` : ''}`);
             labelLayer.addLayer(label);
           });
           externalBalloonLayer.clearLayers();
