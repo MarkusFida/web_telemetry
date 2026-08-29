@@ -1937,6 +1937,32 @@
     let externalBalloonRefreshTimer = null;
     let externalBalloonRefreshSeconds = 30;
     let lastExternalBalloonUrl = '';
+    let externalBalloonEnabled = true;
+
+    function readExternalBalloonEnabled() {
+      const saved = localStorage.getItem('externalBalloonEnabled');
+      if (saved === null) return true;
+      return saved === '1' || saved === 'true';
+    }
+
+    function persistExternalBalloonEnabled(enabled) {
+      externalBalloonEnabled = !!enabled;
+      localStorage.setItem('externalBalloonEnabled', externalBalloonEnabled ? '1' : '0');
+    }
+
+    function ensureExternalBalloonLayerVisibility(layerControl) {
+      const hasExternalBalloonOverlay = !!(layerControl && Object.values(layerControl._layers || {}).some(entry => entry.name === 'External balloons'));
+
+      if (layerControl && !hasExternalBalloonOverlay) {
+        layerControl.addOverlay(externalBalloonLayer, 'External balloons');
+      }
+
+      if (externalBalloonEnabled && !map.hasLayer(externalBalloonLayer)) {
+        externalBalloonLayer.addTo(map);
+      } else if (!externalBalloonEnabled && map.hasLayer(externalBalloonLayer)) {
+        map.removeLayer(externalBalloonLayer);
+      }
+    }
 
     function externalKmlElements(node, name) {
       const result = [];
@@ -1991,12 +2017,19 @@
         externalBalloonLayer.clearLayers();
         externalBalloonLayer.addLayer(layer);
         externalBalloonLayer.addLayer(labels);
-        externalBalloonLayer.addTo(map);
-        if (layerControl && !Object.values(layerControl._layers || {}).some(entry => entry.name === 'External balloons')) layerControl.addOverlay(externalBalloonLayer, 'External balloons');
+        ensureExternalBalloonLayerVisibility(layerControl);
       }).catch(error => console.error('External balloon source could not be loaded:', error.message || error));
     }
 
     function setupExternalBalloons(layerControl) {
+      externalBalloonEnabled = readExternalBalloonEnabled();
+      map.on('overlayadd', function(e) {
+        if (e.name === 'External balloons') persistExternalBalloonEnabled(true);
+      });
+      map.on('overlayremove', function(e) {
+        if (e.name === 'External balloons') persistExternalBalloonEnabled(false);
+      });
+
       const urlInput = document.getElementById('external-balloon-url');
       const refreshInput = document.getElementById('external-balloon-refresh-seconds');
       const savedUrl = localStorage.getItem('externalBalloonUrl') || DEFAULT_EXTERNAL_BALLOON_URL;

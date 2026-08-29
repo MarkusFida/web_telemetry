@@ -1291,6 +1291,35 @@
     let externalBalloonRefreshTimer = null;
     let externalBalloonRefreshSeconds = 30;
     let lastExternalBalloonUrl = '';
+    let externalBalloonEnabled = true;
+
+    function readExternalBalloonEnabled() {
+      const saved = localStorage.getItem('externalBalloonEnabled');
+      if (saved === null) return true;
+      return saved === '1' || saved === 'true';
+    }
+
+    function persistExternalBalloonEnabled(enabled) {
+      externalBalloonEnabled = !!enabled;
+      localStorage.setItem('externalBalloonEnabled', externalBalloonEnabled ? '1' : '0');
+    }
+
+    function ensureExternalBalloonLayerVisibility(layerControl) {
+      const hasExternalBalloonOverlay = !!(layerControl && Object.values(layerControl._layers || {}).some(layerEntry => {
+        const label = layerEntry && (layerEntry.name || layerEntry.layer && layerEntry.layer.options && layerEntry.layer.options.name);
+        return label === 'External balloons';
+      }));
+
+      if (layerControl && !hasExternalBalloonOverlay) {
+        layerControl.addOverlay(externalBalloonLayer, 'External balloons');
+      }
+
+      if (externalBalloonEnabled && !map.hasLayer(externalBalloonLayer)) {
+        externalBalloonLayer.addTo(map);
+      } else if (!externalBalloonEnabled && map.hasLayer(externalBalloonLayer)) {
+        map.removeLayer(externalBalloonLayer);
+      }
+    }
 
     function setExternalBalloonRefreshSeconds(value) {
       const seconds = Math.min(3600, Math.max(5, Number(value) || 30));
@@ -1427,16 +1456,7 @@
       saveExternalBalloonSettings(url, externalBalloonRefreshSeconds);
       const fileExt = url.split('?')[0].split('.').pop().toLowerCase();
       externalBalloonLayer.clearLayers();
-      if (!map.hasLayer(externalBalloonLayer)) {
-        externalBalloonLayer.addTo(map);
-      }
-      const hasExternalBalloonOverlay = !!(layerControl && Object.values(layerControl._layers || {}).some(layerEntry => {
-        const label = layerEntry && (layerEntry.name || layerEntry.layer && layerEntry.layer.options && layerEntry.layer.options.name);
-        return label === 'External balloons';
-      }));
-      if (layerControl && !hasExternalBalloonOverlay) {
-        layerControl.addOverlay(externalBalloonLayer, 'External balloons');
-      }
+      ensureExternalBalloonLayerVisibility(layerControl);
 
       const proxyUrl = `proxy.php?url=${encodeURIComponent(url)}&_=${Date.now()}`;
       fetch(proxyUrl, { cache: 'no-cache' })
@@ -1506,9 +1526,7 @@
           externalBalloonLayer.clearLayers();
           externalBalloonLayer.addLayer(layer);
           externalBalloonLayer.addLayer(labelLayer);
-          if (!map.hasLayer(externalBalloonLayer)) {
-            externalBalloonLayer.addTo(map);
-          }
+          ensureExternalBalloonLayerVisibility(layerControl);
 
         })
         .catch(err => {
@@ -1550,6 +1568,18 @@
     const externalBalloonUrlInput = document.getElementById('external-balloon-url');
     const externalBalloonRefreshInput = document.getElementById('external-balloon-refresh-seconds');
     const externalBalloonLoadButton = document.getElementById('external-balloon-load');
+
+    externalBalloonEnabled = readExternalBalloonEnabled();
+    map.on('overlayadd', function(e) {
+      if (e.name === 'External balloons') {
+        persistExternalBalloonEnabled(true);
+      }
+    });
+    map.on('overlayremove', function(e) {
+      if (e.name === 'External balloons') {
+        persistExternalBalloonEnabled(false);
+      }
+    });
 
     const savedExternalSettings = loadExternalBalloonSettings();
 
