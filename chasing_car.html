@@ -309,9 +309,13 @@
     let carLatLng = null;
     let xLatLng = [49.077094, 6.130127];  // Koordinaten für gelbes X
     let xMarker, xConnectionLine;
+    let linearForecastLines = [];
+    let linearForecastHourMarkers = [];
+    let linearForecastSunMarkers = [];
     let chaserTimestamp = null; // Timestamp for chaser position
     const CHASER_POLL_MS = 5000;
     const USER_LIST_POLL_MS = 10000;
+    const LINEAR_FORECAST_HOURS = 6;
     let activeChaserUserId = 'auto';
 
     try {
@@ -405,6 +409,122 @@
             map.removeLayer(xConnectionLine);
           }
           xConnectionLine = L.polyline([varioPos, xPos], {color: '#00ff00', weight: 3, opacity: 0.8}).addTo(map);  // Grüne Linie
+        }
+      }
+
+      function clearLinearForecast() {
+        linearForecastLines.forEach(line => map.removeLayer(line));
+        linearForecastLines = [];
+        linearForecastHourMarkers.forEach(marker => map.removeLayer(marker));
+        linearForecastHourMarkers = [];
+        linearForecastSunMarkers.forEach(marker => map.removeLayer(marker));
+        linearForecastSunMarkers = [];
+      }
+
+      function destinationPoint(start, distanceMeters, course) {
+        const angularDistance = distanceMeters / 6371000;
+        const bearing = course * Math.PI / 180;
+        const latitude = start.lat * Math.PI / 180;
+        const longitude = start.lng * Math.PI / 180;
+        const endLatitude = Math.asin(
+          Math.sin(latitude) * Math.cos(angularDistance) +
+          Math.cos(latitude) * Math.sin(angularDistance) * Math.cos(bearing)
+        );
+        const endLongitude = longitude + Math.atan2(
+          Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(latitude),
+          Math.cos(angularDistance) - Math.sin(latitude) * Math.sin(endLatitude)
+        );
+        return L.latLng(endLatitude * 180 / Math.PI, ((endLongitude * 180 / Math.PI + 540) % 360) - 180);
+      }
+
+      function solarElevation(date, lat, lng) {
+        const radians = Math.PI / 180;
+        const startOfYear = Date.UTC(date.getUTCFullYear(), 0, 1);
+        const dayOfYear = Math.floor((Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) - startOfYear) / 86400000) + 1;
+        const fractionalHour = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
+        const gamma = 2 * Math.PI / 365 * (dayOfYear - 1 + (fractionalHour - 12) / 24);
+        const equationOfTime = 229.18 * (0.000075 + 0.001868 * Math.cos(gamma) - 0.032077 * Math.sin(gamma) - 0.014615 * Math.cos(2 * gamma) - 0.040849 * Math.sin(2 * gamma));
+        const declination = 0.006918 - 0.399912 * Math.cos(gamma) + 0.070257 * Math.sin(gamma) - 0.006758 * Math.cos(2 * gamma) + 0.000907 * Math.sin(2 * gamma) - 0.002697 * Math.cos(3 * gamma) + 0.00148 * Math.sin(3 * gamma);
+        const hourAngle = (fractionalHour * 15 + equationOfTime / 4 + lng - 180) * radians;
+        const latitude = lat * radians;
+        return Math.asin(Math.sin(latitude) * Math.sin(declination) + Math.cos(latitude) * Math.cos(declination) * Math.cos(hourAngle)) / radians + 0.833;
+      }
+
+      function addLinearForecastSegment(points, isDaylight) {
+        if (points.length < 2) return;
+        linearForecastLines.push(L.polyline(points, {
+          color: isDaylight ? '#ff9800' : '#000000',
+          weight: 5,
+          opacity: 1,
+          dashArray: '8 7',
+          interactive: false,
+          pane: 'shadowPane'
+        }).addTo(map));
+      }
+
+      function addLinearForecastSunMarker(position, date, isSunset) {
+        const pad = value => String(value).padStart(2, '0');
+        const marker = L.circleMarker(position, {
+          radius: 7,
+          color: isSunset ? '#000000' : '#ff9800',
+          fillColor: isSunset ? '#333333' : '#ffe066',
+          fillOpacity: 0.95,
+          weight: 3,
+          interactive: false,
+          pane: 'shadowPane'
+        }).addTo(map);
+        marker.bindTooltip(`${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())} UTC`, { direction: 'top', offset: [0, -6] });
+        linearForecastSunMarkers.push(marker);
+      }
+
+      function updateLinearForecast(data) {
+        clearLinearForecast();
+
+        const course = Number.parseFloat(data.gps_course);
+        const speedKnots = Number.parseFloat(data.gps_speed);
+        if (!Number.isFinite(course) || !Number.isFinite(speedKnots) || speedKnots <= 0) {
+          return;
+        }
+
+        const start = L.latLng(data.gps_lat, data.gps_lng);
+        const speedMetersPerSecond = speedKnots * 0.514444;
+        const now = new Date();
+        const totalSeconds = LINEAR_FORECAST_HOURS * 60 * 60;
+        const sampleInterval = 5 * 60;
+        let segmentPoints = [start];
+        let segmentIsDaylight = solarElevation(now, start.lat, start.lng) >= 0;
+
+        for (let seconds = sampleInterval; seconds < totalSeconds; seconds += sampleInterval) {
+          const position = destinationPoint(start, speedMetersPerSecond * seconds, course);
+          const isDaylight = solarElevation(new Date(now.getTime() + seconds * 1000), position.lat, position.lng) >= 0;
+          if (isDaylight !== segmentIsDaylight) {
+            addLinearForecastSunMarker(position, new Date(now.getTime() + seconds * 1000), segmentIsDaylight);
+            addLinearForecastSegment(segmentPoints.concat(position), segmentIsDaylight);
+            segmentPoints = [position];
+            segmentIsDaylight = isDaylight;
+          } else {
+            segmentPoints.push(position);
+          }
+        }
+        const end = destinationPoint(start, speedMetersPerSecond * totalSeconds, course);
+        addLinearForecastSegment(segmentPoints.concat(end), segmentIsDaylight);
+
+        const nextHour = new Date(now);
+        nextHour.setUTCMinutes(0, 0, 0);
+        if (nextHour <= now) nextHour.setUTCHours(nextHour.getUTCHours() + 1);
+        for (let hour = nextHour; hour <= new Date(now.getTime() + totalSeconds * 1000); hour = new Date(hour.getTime() + 60 * 60 * 1000)) {
+          const secondsFromNow = (hour - now) / 1000;
+          const hourPosition = destinationPoint(start, speedMetersPerSecond * secondsFromNow, course);
+          linearForecastHourMarkers.push(L.marker(hourPosition, {
+            icon: L.divIcon({
+              className: '',
+              html: `<div style="transform:translate(-50%,-50%);font-size:1.2em;font-weight:bold;color:#ffe066;line-height:1.1;text-shadow:0 1px 2px #000,0 0 4px #000;white-space:nowrap;">${String(hour.getUTCHours()).padStart(2, '0')}</div>`,
+              iconSize: [0, 0],
+              iconAnchor: [0, 0]
+            }),
+            interactive: false,
+            pane: 'shadowPane'
+          }).addTo(map));
         }
       }
 
@@ -577,10 +697,10 @@
 
         if (!varioMarker) {
           varioMarker = L.marker([data.gps_lat, data.gps_lng], {icon: varioIcon}).addTo(map)
-            .bindPopup(`<b>Vario Position</b><br>Lat: ${data.gps_lat.toFixed(6)}<br>Lon: ${data.gps_lng.toFixed(6)}<br>Alt: ${data.hoehe_ft} ft<br>Speed: ${data.gps_speed} kt<br>Track: ${data.gps_course}°<br>Vario: ${data.vario}<br>Timestamp: ${data.gps_time}`); // <-- track hinzugefügt
+            .bindPopup(`<b>Vario Position</b><br>Lat: ${data.gps_lat.toFixed(6)}<br>Lon: ${data.gps_lng.toFixed(6)}<br>Alt: ${data.hoehe_ft} ft<br>Speed: ${data.gps_speed} kt<br>Direction: ${data.gps_course}°<br>Vario: ${data.vario}<br>Timestamp: ${data.gps_time}`);
         } else {
           varioMarker.setLatLng([data.gps_lat, data.gps_lng])
-            .setPopupContent(`<b>Vario Position</b><br>Lat: ${data.gps_lat.toFixed(6)}<br>Lon: ${data.gps_lng.toFixed(6)}<br>Alt: ${data.hoehe_ft} ft<br>Speed: ${data.gps_speed} kt<br>Track: ${data.gps_course}°<br>Vario: ${data.vario}<br>Timestamp: ${data.gps_time}`); // <-- track hinzugefügt
+            .setPopupContent(`<b>Vario Position</b><br>Lat: ${data.gps_lat.toFixed(6)}<br>Lon: ${data.gps_lng.toFixed(6)}<br>Alt: ${data.hoehe_ft} ft<br>Speed: ${data.gps_speed} kt<br>Direction: ${data.gps_course}°<br>Vario: ${data.vario}<br>Timestamp: ${data.gps_time}`);
         }
 
         // Calculate distance if car position exists
@@ -598,6 +718,7 @@
         // Update lines
         updateConnectionLine();
         updateXConnectionLine();
+        updateLinearForecast(data);
       }
 
       function fetchAndUpdate() {
@@ -614,7 +735,6 @@
       }
 
       setInterval(fetchAndUpdate, 30000);
-      fetchAndUpdate();
 
       // Function to auto zoom on all markers
       function autoZoom() {
@@ -777,22 +897,28 @@
         });
       });
 
-      // Initialize X marker with default and then overwrite with server value if available
+      function loadSavedXPosition() {
+        return fetch('get_x_position.php', { cache: 'no-store' })
+          .then(r => r.json())
+          .then(data => {
+            if (data && typeof data.lat === 'number' && typeof data.lng === 'number') {
+              setXPosition(data.lat, data.lng);
+            }
+          })
+          .catch(err => console.log('No saved X position:', err));
+      }
+
+      function reloadAllPositions() {
+        fetchAndUpdate();
+        loadSavedXPosition();
+        loadChaserUsers().then(loadSavedChaserPosition);
+      }
+
+      // Initialize the visible X marker, then refresh every position source immediately.
       setXPosition(xLatLng[0], xLatLng[1]);
+      reloadAllPositions();
 
-      fetch('get_x_position.php')
-        .then(r => r.json())
-        .then(data => {
-          if (data && typeof data.lat === 'number' && typeof data.lng === 'number') {
-            setXPosition(data.lat, data.lng);
-          }
-        })
-        .catch(err => console.log('No saved X position:', err));
-
-      // Load and poll saved Chaser Position for selected user
-      loadChaserUsers().then(function() {
-        loadSavedChaserPosition();
-      });
+      // Poll saved Chaser Position for selected user
       setInterval(loadSavedChaserPosition, CHASER_POLL_MS);
       setInterval(loadChaserUsers, USER_LIST_POLL_MS);
 
