@@ -313,7 +313,7 @@
     let linearForecastHourMarkers = [];
     let linearForecastSunMarkers = [];
     let chaserTimestamp = null; // Timestamp for chaser position
-    const CHASER_POLL_MS = 5000;
+    const CHASER_POLL_MS = 10000;
     const USER_LIST_POLL_MS = 10000;
     const LINEAR_FORECAST_HOURS = 6;
     let activeChaserUserId = 'auto';
@@ -734,7 +734,7 @@
           .catch(err => console.error('Error loading Vario data:', err));
       }
 
-      setInterval(fetchAndUpdate, 30000);
+      setInterval(fetchAndUpdate, 10000);
 
       // Function to auto zoom on all markers
       function autoZoom() {
